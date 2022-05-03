@@ -5,9 +5,12 @@ import initQoS from '@soundworks/template-helpers/client/init-qos.js';
 
 import pluginPlatformFactory from '@soundworks/plugin-platform/client';
 import pluginSyncFactory from '@soundworks/plugin-sync/client';
-import pluginScriptingFactory from '@soundworks/plugin-scripting/client';
+import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
+import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
 
-import PlayerExperience from './PlayerExperience.js';
+import MozaickingExperience from './MozaickingExperience.js';
+
+
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioContext = new AudioContext();
@@ -16,7 +19,6 @@ const config = window.soundworksConfig;
 // store experiences of emulated clients
 const experiences = new Set();
 
-console.info('> self.crossOriginIsolated', self.crossOriginIsolated);
 
 async function launch($container, index) {
   try {
@@ -35,15 +37,16 @@ async function launch($container, index) {
     client.pluginManager.register('sync', pluginSyncFactory, {
       getTimeFunction: () => audioContext.currentTime,
     }, ['platform']);
-    client.pluginManager.register('synth-scripting', pluginScriptingFactory, {}, []);
+    client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
+    client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
 
     // -------------------------------------------------------------------
     // launch application
     // -------------------------------------------------------------------
     await client.init(config);
-    initQoS(client);
+    initQoS(client, { visibilityChange: false });
 
-    const experience = new PlayerExperience(client, config, $container, audioContext);
+    const experience = new MozaickingExperience(client, config, $container, audioContext);
     // store exprience for emulated clients
     experiences.add(experience);
 

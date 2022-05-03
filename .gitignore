@@ -17,3 +17,6 @@ Thumbs.db
 
 # TLS certificates
 /**/*.pem
+
+# 
+/soundbank/*
