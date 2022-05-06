@@ -5,7 +5,6 @@ import initQoS from '@soundworks/template-helpers/client/init-qos.js';
 
 import pluginPlatformFactory from '@soundworks/plugin-platform/client';
 import pluginSyncFactory from '@soundworks/plugin-sync/client';
-import pluginScriptingFactory from '@soundworks/plugin-scripting/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
 
@@ -36,7 +35,6 @@ async function launch($container, index) {
     client.pluginManager.register('sync', pluginSyncFactory, {
       getTimeFunction: () => audioContext.currentTime,
     }, ['platform']);
-    client.pluginManager.register('synth-scripting', pluginScriptingFactory, {}, []);
     client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
     client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
 

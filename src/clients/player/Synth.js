@@ -5,6 +5,11 @@ class Synth {
     this.grainDuration = grainDuration;
     this.scheduler = scheduler;
 
+    this.loop = false;
+    this._startIndex = 0;
+    this._endIndex = 0;
+    this._maxIndex = 0;
+
     this.periodRand = 0.004;
   }
 
@@ -15,6 +20,8 @@ class Synth {
 
   setModel(model) {
     this.model = model;
+    this._maxIndex = model.length-1;
+    this._endIndex = this._maxIndex;
   }
 
   setBuffer(buffer) {
@@ -33,9 +40,30 @@ class Synth {
     this.clearCallback = callback;
   }
 
-  start() {
-    this.index = 0;
+  //Looping functions
+  set startIndex(value) {
+    if (Number.isInteger(value) && value >= 0 && value < this._maxIndex) {
+      this._startIndex = value;
+    }
+  }
 
+  set endIndex(value) {
+    if (Number.isInteger(value) && value >= 0 && value <= this._maxIndex) {
+      this._endIndex = value;
+    }
+  }
+
+  setLoopLimits(posStart, posEnd, wvWidth) {
+    this.startIndex = Math.floor(this._maxIndex * posStart / wvWidth);
+    this.endIndex = Math.ceil(this._maxIndex * posEnd / wvWidth); 
+  }
+
+  start() {
+    this.index = this._startIndex;
+
+    if (this.scheduler.has(this)) {
+      this.scheduler.remove(this);
+    }
     this.scheduler.add(this, this.audioContext.currentTime);
   }
 
@@ -66,11 +94,16 @@ class Synth {
     source.start(time, timeOffset, this.grainDuration);
     source.stop(time + this.grainDuration);
 
+
     this.index += 1;
 
-    if (this.index < this.model.length) {
-      // this.advanceCallback(this.index * this.grainPeriod, timeOffset);
+    this.advanceCallback(target / this.times.length, this.index / this.model.length);
 
+    if (this.index <= this._endIndex) {
+      const rand = Math.random() * this.periodRand - (this.periodRand / 2);
+      return time + this.grainPeriod + rand;
+    } else if (this.loop) {
+      this.index = this._startIndex;
       const rand = Math.random() * this.periodRand - (this.periodRand / 2);
       return time + this.grainPeriod + rand;
     } else {

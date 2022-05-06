@@ -1,11 +1,12 @@
 export default {
-  synthDirectory: {
-    type: 'string',
-    default: 'src/clients/player/audio/user_scripts',
-  },
-  currentScript: {
+  name: {
     type: 'string',
     default: null,
     nullable: true,
   },
-}
+  state: {
+    type: 'string',
+    default: null,
+    nullable: true,
+  },
+};

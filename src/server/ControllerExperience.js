@@ -6,7 +6,6 @@ class ControllerExperience extends AbstractExperience {
 
     this.platform = this.require('platform');
     this.sync = this.require('sync');
-    this.synthScripting = this.require('synth-scripting');
     this.filesystem = this.require('filesystem');
     this.audioBufferLoader = this.require('audio-buffer-loader');
   }

@@ -7,19 +7,13 @@ import compile from 'template-literal';
 
 import PlayerExperience from './PlayerExperience.js';
 import ControllerExperience from './ControllerExperience.js';
-import MozaickingExperience from './MozaickingExperience.js';
-
 
 import pluginPlatformFactory from '@soundworks/plugin-platform/server';
 import pluginSyncFactory from '@soundworks/plugin-sync/server';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/server';
-import pluginScriptingFactory from '@soundworks/plugin-scripting/server';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/server';
 
-import micControlSchema from './schemas/micControl';
-import dataFromMicSchema from './schemas/dataFromMic.js';
-import dataOutOscSchema from './schemas/dataOutOsc.js';
-import scriptSchema from './schemas/script.js';
+import participantSchema from './schemas/participant.js';
 
 import getConfig from '../utils/getConfig.js';
 const ENV = process.env.ENV || 'default';
@@ -47,10 +41,6 @@ console.log(`
 // server.pluginManager.register(pluginName, pluginFactory, [pluginOptions], [dependencies])
 server.pluginManager.register('platform', pluginPlatformFactory, {}, []);
 server.pluginManager.register('sync', pluginSyncFactory, {}, []);
-server.pluginManager.register('synth-scripting', pluginScriptingFactory, {
-  // default to `.data/scripts`
-  directory: 'src/clients/controller/scripts', 
-}, []);
 server.pluginManager.register('filesystem', pluginFilesystemFactory, {
   directories: [{
     name: 'soundbank',
@@ -65,10 +55,7 @@ server.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFact
 // register schemas
 // -------------------------------------------------------------------
 // server.stateManager.registerSchema(name, schema);
-server.stateManager.registerSchema('micControl', micControlSchema);
-server.stateManager.registerSchema('dataFromMic', dataFromMicSchema);
-server.stateManager.registerSchema('dataOutOsc', dataOutOscSchema);
-server.stateManager.registerSchema('synth-script', scriptSchema);
+server.stateManager.registerSchema('participant', participantSchema);
 
 (async function launch() {
   try {
@@ -87,20 +74,13 @@ server.stateManager.registerSchema('synth-script', scriptSchema);
       };
     });
 
-    const micControl = await server.stateManager.create('micControl');
-    const synthScript = await server.stateManager.create('synth-script');
-    const dataOutOsc = await server.stateManager.create('dataOutOsc');
-
     const playerExperience = new PlayerExperience(server, 'player');
     const controllerExperience = new ControllerExperience(server, 'controller');
-    const mozaickingExperience = new MozaickingExperience(server, 'mozaicking');
-
 
     // start all the things
     await server.start();
     playerExperience.start();
     controllerExperience.start();
-    mozaickingExperience.start();
 
     const oscConfig = { // these are the defaults
       localAddress: '0.0.0.0',

@@ -8,7 +8,7 @@ import pluginSyncFactory from '@soundworks/plugin-sync/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
 
-import MozaickingExperience from './MozaickingExperience.js';
+import PlayerExperience from './PlayerExperience.js';
 
 
 
@@ -46,7 +46,7 @@ async function launch($container, index) {
     await client.init(config);
     initQoS(client, { visibilityChange: false });
 
-    const experience = new MozaickingExperience(client, config, $container, audioContext);
+    const experience = new PlayerExperience(client, config, $container, audioContext);
     // store exprience for emulated clients
     experiences.add(experience);
 
@@ -57,7 +57,7 @@ async function launch($container, index) {
     experience.start();
 
     return Promise.resolve();
-  } catch(err) {
+  } catch (err) {
     console.error(err);
   }
 }
