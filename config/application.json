@@ -10,8 +10,5 @@
     controller: {
       target: 'browser',
     },
-    mozaicking: {
-      target: 'browser',
-    },
   },
 }

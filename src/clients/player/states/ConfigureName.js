@@ -1,5 +1,5 @@
 import State from './State.js';
-import { html } from 'lit-html';
+import { html } from 'lit/html.js';
 import slugify from 'slugify';
 import '@ircam/simple-components/sc-button.js';
 
