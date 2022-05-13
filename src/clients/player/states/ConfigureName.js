@@ -14,7 +14,6 @@ export default class ConfigureName extends State {
 
   async setName(name) {
     if (name !== '') {
-      console.log('name is', name);
       await this.context.participant.set({
         name: name,
         state: 'mosaicing',

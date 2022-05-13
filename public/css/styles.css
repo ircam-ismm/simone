@@ -16,6 +16,7 @@ html {
   font-family: Consolas, monaco, monospace;
 }
 
+
 body.loading {
   background-image: url(../images/loader.gif);
   background-position: 50% 50%;

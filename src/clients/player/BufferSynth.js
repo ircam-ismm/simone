@@ -50,25 +50,33 @@ class BufferSynth {
 
   setSelectionLimits(startPos, endPos) {
     const now = this.audioContext.currentTime
-    const currentPlayingPos = now - this.timeLastStart + this._loopStart;
+    const newSel = startPos !== this._selectionStartPos && endPos !== this._selectionEndPos;
     this._selectionStartPos = startPos;
     this._loopStart = Math.max(0, this._duration * startPos / this._wvWidth);
     this._selectionEndPos = endPos;
     this._loopEnd = Math.max(0, this._duration * endPos / this._wvWidth);
 
     if (this.playing && this._loop) {
-      const now = this.audioContext.currentTime; 
-      const selectionLength = this._loopEnd - this._loopStart;
-      let currentBufferTime = now - this.timeLastStart + this._loopStart; // get position in time in buffer
-      while (now - this.timeLastStart > selectionLength) {
-        this.timeLastStart += selectionLength; // modulo if needed
-      }
-      if (currentBufferTime >= this._loopStart && currentBufferTime <= this._loopEnd) {
-        this.bufferPlayerNode.stop(now); // not using this.stop bc this would trigger the 'ended' callback
-        this.play(now, currentBufferTime, true);
-      } else {
+      if (newSel) {
         this.bufferPlayerNode.stop(now);
         this.play(now);
+        // console.log("new start");
+        // const now = this.audioContext.currentTime;
+        // const selectionLength = this._loopEnd - this._loopStart;
+        // let currentBufferTime = now - this.timeLastStart + this._loopStart; // get position in time in buffer
+        // while (now - this.timeLastStart > selectionLength) {
+        //   this.timeLastStart += selectionLength; // modulo if needed
+        // }
+        // if (currentBufferTime >= this._loopStart && currentBufferTime <= this._loopEnd) {
+        //   this.bufferPlayerNode.stop(now); // not using this.stop bc this would trigger the 'ended' callback
+        //   this.play(now, currentBufferTime, true);
+        // } else {
+        //   this.bufferPlayerNode.stop(now);
+        //   this.play(now);
+        // }
+      } else {
+        this.bufferPlayerNode.loopStart = this._loopStart;
+        this.bufferPlayerNode.loopEnd = this._loopEnd;
       }
     }
   }

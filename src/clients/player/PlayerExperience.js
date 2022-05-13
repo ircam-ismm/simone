@@ -30,6 +30,8 @@ class PlayerExperience extends AbstractExperience {
 
     this.stateMachine = new StateMachine(this);
 
+    this.players = {};
+
     this.participant = await this.client.stateManager.create('participant');
     this.participant.subscribe(async updates => {
       if ('state' in updates) {
@@ -38,6 +40,25 @@ class PlayerExperience extends AbstractExperience {
       this.render();
     });
 
+
+    this.client.stateManager.observe(async (schemaName, stateId, nodeId) => {
+      switch (schemaName) {
+        case 'participant':
+          const playerState = await this.client.stateManager.attach(schemaName, stateId);
+          playerState.subscribe(updates => {
+            if ('name' in updates) {
+              this.render();
+            }
+          })
+          playerState.onDetach(() => {
+            delete this.players[playerState.id];
+            this.render();
+          });
+          // this.players.add(playerState);
+          this.players[playerState.id] = playerState;
+          break;
+      }
+    });
 
     //Audio file loading 
 
@@ -77,7 +98,7 @@ class PlayerExperience extends AbstractExperience {
 
 
 
-    const SKIP_NAME = true;
+    const SKIP_NAME = false;
 
     if (SKIP_NAME) {
       await this.participant.set({

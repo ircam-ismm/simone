@@ -36,6 +36,8 @@ export default class Mosaicing extends State {
     this.mouseDownTarget = this.mouseDownTarget.bind(this);
     this.mouseMoveTarget = this.mouseMoveTarget.bind(this);
     this.mouseUpTarget = this.mouseUpTarget.bind(this);
+
+    this.targetPlayerState = this.context.participant;
   }
 
   async enter() {
@@ -260,6 +262,22 @@ export default class Mosaicing extends State {
     }
   }
 
+  transportMosaicing(state) {
+    switch (state) {
+      case 'play':
+        this.mosaicingSynth.start();
+
+        this.mosaicingSynth.setClearCallback(() => {
+          const $transportMosaicing = document.querySelector('#transport-mosaicing');
+          $transportMosaicing.state = 'stop';
+        });
+        break;
+      case 'stop':
+        this.mosaicingSynth.stop();
+        break;
+    }
+  }
+
   mouseDownTarget(eventDown) {    
 
     eventDown.preventDefault(); // Prevent selection
@@ -290,6 +308,9 @@ export default class Mosaicing extends State {
     if (this.$loopEndPos - this.$loopStartPos > 0) {
       this.mosaicingSynth.setLoopLimits(this.$loopStartPos, this.$loopEndPos, this.waveformWidth);
       this.targetBufferSynth.setSelectionLimits(this.$loopStartPos, this.$loopEndPos);
+    } else {
+      this.mosaicingSynth.setLoopLimits(0, this.waveformWidth, this.waveformWidth);
+      this.targetBufferSynth.setSelectionLimits(0, this.waveformWidth);
     } 
     // this.targetPlayerNode.loopStart = this.currentTarget.duration * this.$loopStartPos/this.waveformWidth;
     // this.targetPlayerNode.loopEnd = this.currentTarget.duration * this.$loopEndPos/this.waveformWidth;
@@ -297,13 +318,33 @@ export default class Mosaicing extends State {
 
 
   render() {
-
     return html`
         <div style="padding: 20px">
-          <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.client.id}]</h1>
+          <h1 style="margin: 20px 0">${this.context.participant.get('name') } [id: ${this.context.client.id}]</h1>
         </div>
 
-        <div>
+        <div style="padding-left: 20px">
+          <p style="display: inline">
+            Send mosaicing data to : 
+          </p> 
+          <select 
+            style="display: inline"
+            @change="${e => this.targetPlayerState = this.context.players[e.target.value]}"
+          >
+            ${Array.from(Object.keys(this.context.players)).map(playerId => {
+              const playerState = this.context.players[playerId];
+              const name = playerState.get('name');
+              if (parseInt(playerId) === this.context.participant.id) {
+                return html`<option value="${playerId}" selected>${name} (you)</option>`;
+              } else {
+                return html`<option value="${playerId}">${name}</option>`;
+              }
+            })
+            }
+          </select>
+        </div>
+
+        <div style="padding-left: 20px">
           <h3>Source</h3>
 
           <sc-file-tree
@@ -325,17 +366,46 @@ export default class Mosaicing extends State {
               ${this.$wvSvgSource}
               ${this.$cursorSource}
             </svg>
-
+            <p
+              style="
+                position: absolute;
+                bottom: 0;
+                left: 0;
+              " 
+            >
+              play file :
+            </p>
             <sc-transport
               id="transport-source"
               style="
                 position: absolute;
                 bottom: 0;
-                left: 0;
+                left: 70px;
               "
               buttons="[play, stop]"
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
+            <p
+              style="
+                position: absolute;
+                bottom: 0;
+                left: 140px;
+              "
+            >
+              mosaicing :
+            </p>
+
+            <sc-transport
+              id="transport-mosaicing"
+              style="
+                position: absolute;
+                bottom: 0;
+                left: 210px;
+              "
+              buttons="[play, stop]"
+              @change="${e => this.transportMosaicing(e.detail.value)}"
+            ></sc-transport>
+
             <sc-slider
               style="
                 position: absolute;
@@ -415,17 +485,6 @@ export default class Mosaicing extends State {
               ></sc-slider>
             </div>
 
-        </div>
-
-        <div style="margin: 10px">
-          <sc-button
-            text="start mosaicing"
-            @input="${e => this.mosaicingSynth.start()}"
-          ></sc-button>
-          <sc-button
-            text="stop"
-            @input="${e => this.mosaicingSynth.stop()}"
-          ></sc-button>
         </div>
 
       `

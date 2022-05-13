@@ -12,6 +12,8 @@ class Synth {
 
     this.periodRand = 0.004;
 
+    this.nextData = [];
+
     this.output = new GainNode(this.audioContext);
     this.output.gain.value = 0.5;
   }
@@ -121,7 +123,7 @@ class Synth {
       const rand = Math.random() * this.periodRand - (this.periodRand / 2);
       return time + this.grainPeriod + rand;
     } else {
-      // this.clearCallback();
+      this.clearCallback();
       return undefined; // remove from scheduler
     }
   }
