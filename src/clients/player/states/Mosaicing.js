@@ -7,7 +7,7 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformSvgBuilder from '../WaveformSvgBuilder';
 import createKDTree from 'static-kdtree';
-import Synth from '../Synth';
+import MosaicingSynth from '../MosaicingSynth';
 import BufferSynth from '../BufferSynth';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
@@ -36,6 +36,12 @@ export default class Mosaicing extends State {
     this.mouseDownTarget = this.mouseDownTarget.bind(this);
     this.mouseMoveTarget = this.mouseMoveTarget.bind(this);
     this.mouseUpTarget = this.mouseUpTarget.bind(this);
+    this.touchStartTarget = this.touchStartTarget.bind(this);
+    this.touchMoveTarget = this.touchMoveTarget.bind(this);
+    this.touchEndTarget = this.touchEndTarget.bind(this);
+
+    this.activePointers = new Map();
+    this.pointerIds = []; // we want to keep the order of appearance consistant
 
     this.targetPlayerState = this.context.participant;
   }
@@ -108,7 +114,7 @@ export default class Mosaicing extends State {
 
     const grainPeriod = this.hopSize / this.sourceSampleRate;
     const grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new Synth(this.context.audioContext, grainPeriod, grainDuration, scheduler);
+    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, grainPeriod, grainDuration, scheduler);
     this.mosaicingSynth.connect(this.context.audioContext.destination);
     this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
     this.targetBufferSynth.connect(this.context.audioContext.destination);
@@ -116,21 +122,21 @@ export default class Mosaicing extends State {
 
     this.mosaicingSynth.setAdvanceCallback((sourcePos, targetPos) => {
       this.displayCursor(sourcePos * this.waveformWidth, this.$cursorSource);
-      this.displayCursor(targetPos * this.waveformWidth, this.$cursorTarget);
+      // this.displayCursor(targetPos * this.waveformWidth, this.$cursorTarget);
     });
+
+    this.context.participant.subscribe(updates => {
+      if ('mosaicingData' in updates) {
+        this.mosaicingSynth.pushData(updates.mosaicingData);
+      }
+    })
 
     setTimeout(() => {
       // Select played section on target waveform
       // this.$loopStartPos = 0;
       const $svgWaveform = document.querySelector("#target-waveform");
       $svgWaveform.addEventListener('mousedown', this.mouseDownTarget);
-      // $svgWaveform.addEventListener('touchstart', eventClick => {
-      //   const dim = $svgWaveform.getBoundingClientRect();
-      //   if (eventClick.buttons === 1) { // NOT WORKING
-      //     $svgWaveform.addEventListener('touchmove', eventMove => this.selectLimits(eventMove, eventClick.clientX, dim));
-      //     eventClick.preventDefault(); // Prevent selection
-      //   }
-      // });
+      $svgWaveform.addEventListener('touchstart', this.touchStartTarget);
     }, 200);
     
     
@@ -278,24 +284,71 @@ export default class Mosaicing extends State {
     }
   }
 
-  mouseDownTarget(eventDown) {    
+  mouseDownTarget(e) {    
 
-    eventDown.preventDefault(); // Prevent selection
-    this.clickXPos = eventDown.clientX;
-    this.clickTargetDim = eventDown.currentTarget.getBoundingClientRect();
+    e.preventDefault(); // Prevent selection
+    this.clickXPos = e.clientX;
+    this.clickTargetDim = e.currentTarget.getBoundingClientRect();
     window.addEventListener('mousemove', this.mouseMoveTarget);
     window.addEventListener('mouseup', this.mouseUpTarget);
 
   }
 
-  mouseMoveTarget(eventMove) {
-    eventMove.preventDefault(); // Prevent selection
-    this.selectLimits(eventMove, this.clickXPos, this.clickTargetDim);
+  mouseMoveTarget(e) {
+    e.preventDefault(); // Prevent selection
+    this.selectLimits(e, this.clickXPos, this.clickTargetDim);
   }
 
-  mouseUpTarget(eventUp) {
+  mouseUpTarget(e) {
     window.removeEventListener('mousemove', this.mouseMoveTarget);
     window.removeEventListener('mouseup', this.mouseUpTarget);
+  }
+
+  touchStartTarget(e) {
+    e.preventDefault();
+
+    if (this.pointerIds.length === 0) {
+      window.addEventListener('touchmove', this.touchMoveTarget, {passive: false});
+      window.addEventListener('touchend', this.touchEndTarget);
+      window.addEventListener('touchcancel', this.touchEndTarget);
+    }
+
+    for (let touch of e.changedTouches) {
+      this.clickXPos = touch.clientX;
+      this.clickTargetDim = e.currentTarget.getBoundingClientRect();
+      const id = touch.identifier;
+      this.pointerIds.push(id);
+      this.activePointers.set(id, touch);
+    }
+  }
+
+  touchMoveTarget(e) {
+    e.preventDefault();
+
+    for (let touch of e.changedTouches) {
+      const id = touch.identifier;
+      if (this.pointerIds.indexOf(id) !== -1) {
+        this.activePointers.set(id, touch);
+        this.selectLimits(touch, this.clickXPos, this.clickTargetDim);
+      }
+    }
+  }
+
+  touchEndTarget(e) {
+    for (let touch of e.changedTouches) {
+      const pointerId = touch.identifier;
+      const index = this.pointerIds.indexOf(pointerId);
+      if (index !== -1) {
+        this.pointerIds.splice(index, 1);
+        this.activePointers.delete(pointerId);
+      }
+    }
+
+    if (this.pointerIds.length === 0) {
+      window.removeEventListener('touchmove', this.touchMoveTarget);
+      window.removeEventListener('touchend', this.touchEndTarget);
+      window.removeEventListener('touchcancel', this.touchEndTarget);
+    }
   }
 
   selectLimits(event, clickX, dim) {
@@ -329,7 +382,7 @@ export default class Mosaicing extends State {
           </p> 
           <select 
             style="display: inline"
-            @change="${e => this.targetPlayerState = this.context.players[e.target.value]}"
+            @change="${e => this.mosaicingSynth.targetPlayerState = this.context.players[e.target.value]}"
           >
             ${Array.from(Object.keys(this.context.players)).map(playerId => {
               const playerState = this.context.players[playerId];
@@ -344,7 +397,7 @@ export default class Mosaicing extends State {
           </select>
         </div>
 
-        <div style="padding-left: 20px">
+        <div style="padding-left: 20px; padding-right: 20px">
           <h3>Source</h3>
 
           <sc-file-tree

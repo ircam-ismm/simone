@@ -55,25 +55,12 @@ class BufferSynth {
     this._loopStart = Math.max(0, this._duration * startPos / this._wvWidth);
     this._selectionEndPos = endPos;
     this._loopEnd = Math.max(0, this._duration * endPos / this._wvWidth);
+    this._loopEnd = Math.min(this._loopEnd, this._duration);
 
     if (this.playing && this._loop) {
       if (newSel) {
         this.bufferPlayerNode.stop(now);
         this.play(now);
-        // console.log("new start");
-        // const now = this.audioContext.currentTime;
-        // const selectionLength = this._loopEnd - this._loopStart;
-        // let currentBufferTime = now - this.timeLastStart + this._loopStart; // get position in time in buffer
-        // while (now - this.timeLastStart > selectionLength) {
-        //   this.timeLastStart += selectionLength; // modulo if needed
-        // }
-        // if (currentBufferTime >= this._loopStart && currentBufferTime <= this._loopEnd) {
-        //   this.bufferPlayerNode.stop(now); // not using this.stop bc this would trigger the 'ended' callback
-        //   this.play(now, currentBufferTime, true);
-        // } else {
-        //   this.bufferPlayerNode.stop(now);
-        //   this.play(now);
-        // }
       } else {
         this.bufferPlayerNode.loopStart = this._loopStart;
         this.bufferPlayerNode.loopEnd = this._loopEnd;
@@ -81,19 +68,6 @@ class BufferSynth {
     }
   }
 
-  // setSelectionLimits(startPos, endPos) {
-  //   const now = this.audioContext.currentTime
-  //   const currentPlayingPos = now - this.timeLastStart + this._loopStart;
-  //   this._selectionStartPos = startPos;
-  //   this._loopStart = Math.max(0, this._duration * startPos / this._wvWidth);
-  //   this._selectionEndPos = endPos;
-  //   this._loopEnd = Math.max(0, this._duration * endPos / this._wvWidth);
-
-  //   if (this.playing) {
-  //     this.bufferPlayerNode.stop(now); // not using this.stop bc this would trigger the 'ended' callback
-  //     this.play(now, undefined, true);
-  //   }
-  // }
 
 
   connect(dest) {
@@ -106,13 +80,18 @@ class BufferSynth {
     this.bufferPlayerNode = new AudioBufferSourceNode(this.audioContext);
     this.bufferPlayerNode.buffer = this._buffer;
     this.bufferPlayerNode.connect(this.output);
+    console.log(this._loop, offset, this._loopStart, this._loopEnd, this._duration);
     if (this._loop) {
       this.bufferPlayerNode.loop = true;
       this.bufferPlayerNode.loopStart = this._loopStart;
       this.bufferPlayerNode.loopEnd = this._loopEnd;
+      console.log('here...');
       this.start(time, offset);
     } else {
-      this.start(time, offset, this._loopEnd - offset);
+      const dur = this._loopEnd ? this._loopEnd - offset : this._duration - offset;
+
+      console.log('... and there', dur);
+      this.start(time, offset, dur);
     } 
     if (!notResetTime) {
       this.timeLastStart = time;
@@ -131,11 +110,17 @@ class BufferSynth {
   }
 
   stop(time) {
-    this.bufferPlayerNode.addEventListener('ended', event => {
-      this.playing = false;
-      const cb = this.callbacks['ended'];
-      cb(event);
-    });
+    // this.bufferPlayerNode.addEventListener('ended', event => {
+    //   this.playing = false;
+    //   const cb = this.callbacks['ended'];
+    //   console.log('hello')
+    //   cb(event);
+    // });
+
+    this.playing = false;
+    const cb = this.callbacks['ended'];
+    console.log('hello')
+    cb();
 
     this.bufferPlayerNode.stop(time);
   }
