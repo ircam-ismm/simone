@@ -112,9 +112,9 @@ export default class Mosaicing extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     const scheduler = new Scheduler(getTimeFunction);
 
-    const grainPeriod = this.hopSize / this.sourceSampleRate;
-    const grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, grainPeriod, grainDuration, scheduler);
+    this.grainPeriod = this.hopSize / this.sourceSampleRate;
+    this.grainDuration = this.frameSize / this.sourceSampleRate;
+    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, scheduler);
     this.mosaicingSynth.connect(this.context.audioContext.destination);
     this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
     this.targetBufferSynth.connect(this.context.audioContext.destination);
@@ -397,6 +397,8 @@ export default class Mosaicing extends State {
           </select>
         </div>
 
+        <div></div>
+
         <div style="padding-left: 20px; padding-right: 20px">
           <h3>Source</h3>
 
@@ -469,6 +471,34 @@ export default class Mosaicing extends State {
               width="30"
               orientation="vertical"
               @input=${e => this.mosaicingSynth.volume = e.detail.value }
+            ></sc-slider>
+            <sc-slider
+              style="
+                position: absolute;
+                left: ${this.waveformWidth + 50}px;
+                bottom: 0;
+              "
+              height="${this.waveformHeight}"
+              width="30"
+              orientation="vertical"
+              min="${this.grainPeriod/2}"
+              max="${this.grainPeriod*2}"
+              value="${this.grainPeriod}"
+              @input=${e => this.mosaicingSynth.grainPeriod = e.detail.value }
+            ></sc-slider>
+            <sc-slider
+              style="
+                position: absolute;
+                left: ${this.waveformWidth + 90}px;
+                bottom: 0;
+              "
+              height="${this.waveformHeight}"
+              width="30"
+              orientation="vertical"
+              min="${this.grainDuration / 2}"
+              max="${this.grainDuration * 2}"
+              value="${this.grainDuration}"
+              @input=${e => this.mosaicingSynth.grainDuration = e.detail.value }
             ></sc-slider>
         </div>
 

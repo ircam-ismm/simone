@@ -98,7 +98,7 @@ class PlayerExperience extends AbstractExperience {
 
 
 
-    const SKIP_NAME = true;
+    const SKIP_NAME = false;
 
     if (SKIP_NAME) {
       await this.participant.set({
