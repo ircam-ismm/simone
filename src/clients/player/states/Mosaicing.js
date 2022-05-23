@@ -31,14 +31,19 @@ export default class Mosaicing extends State {
 
     // Waveform display
     this.waveformWidth = 800;
-    this.waveformHeight = 200;
+    this.waveformHeight = 150;
+    this.loopSelAMin = 0; //limits of loop selection on waveform
+    this.loopSelAWidth = this.waveformWidth/10;
+    this.loopSelectionAOffset = 0;
+    this.loopSelBMin = 0; 
+    this.loopSelBWidth = this.waveformWidth/10;
 
-    this.mouseDownTarget = this.mouseDownTarget.bind(this);
+    this.mouseDownTargetA = this.mouseDownTargetA.bind(this);
     this.mouseMoveTarget = this.mouseMoveTarget.bind(this);
     this.mouseUpTarget = this.mouseUpTarget.bind(this);
-    this.touchStartTarget = this.touchStartTarget.bind(this);
-    this.touchMoveTarget = this.touchMoveTarget.bind(this);
-    this.touchEndTarget = this.touchEndTarget.bind(this);
+    // this.touchStartTarget = this.touchStartTarget.bind(this);
+    // this.touchMoveTarget = this.touchMoveTarget.bind(this);
+    // this.touchEndTarget = this.touchEndTarget.bind(this);
 
     this.activePointers = new Map();
     this.pointerIds = []; // we want to keep the order of appearance consistant
@@ -69,12 +74,21 @@ export default class Mosaicing extends State {
     this.$wvSvgSource.setAttributeNS(null, 'shape-rendering', 'crispEdges');
     this.$wvSvgSource.setAttributeNS(null, 'stroke', 'white');
     this.$wvSvgSource.style.opacity = 1;
+    this.$wvSvgSource.setAttributeNS(null, 'd', `M 0,${this.waveformHeight / 2}L ${this.waveformWidth},${this.waveformHeight / 2}`);
 
-    this.$wvSvgTarget = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    this.$wvSvgTarget.setAttributeNS(null, 'fill', 'none');
-    this.$wvSvgTarget.setAttributeNS(null, 'shape-rendering', 'crispEdges');
-    this.$wvSvgTarget.setAttributeNS(null, 'stroke', 'white');
-    this.$wvSvgTarget.style.opacity = 1;
+    this.$wvSvgTargetA = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    this.$wvSvgTargetA.setAttributeNS(null, 'fill', 'none');
+    this.$wvSvgTargetA.setAttributeNS(null, 'shape-rendering', 'crispEdges');
+    this.$wvSvgTargetA.setAttributeNS(null, 'stroke', 'white');
+    this.$wvSvgTargetA.style.opacity = 1;
+    this.$wvSvgTargetA.setAttributeNS(null, 'd', `M 0,${this.waveformHeight/2}L ${this.waveformWidth},${this.waveformHeight/2}`);
+
+    this.$wvSvgTargetB = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    this.$wvSvgTargetB.setAttributeNS(null, 'fill', 'none');
+    this.$wvSvgTargetB.setAttributeNS(null, 'shape-rendering', 'crispEdges');
+    this.$wvSvgTargetB.setAttributeNS(null, 'stroke', 'white');
+    this.$wvSvgTargetB.style.opacity = 1;
+    this.$wvSvgTargetB.setAttributeNS(null, 'd', `M 0,${this.waveformHeight / 2}L ${this.waveformWidth},${this.waveformHeight / 2}`);
 
     this.$cursorSource = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.$cursorSource.setAttributeNS(null, 'fill', 'none');
@@ -88,11 +102,21 @@ export default class Mosaicing extends State {
     this.$cursorTarget.setAttributeNS(null, 'stroke', 'red');
     this.$cursorTarget.style.opacity = 1;
 
-    this.$loopSelection = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    this.$loopSelection.setAttributeNS(null, 'fill', 'white');
-    this.$loopSelection.setAttributeNS(null, 'y', '0');
-    this.$loopSelection.setAttributeNS(null, 'height', `${this.waveformHeight}`);
-    this.$loopSelection.style.opacity = 0.4;
+    this.$loopSelectionA = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    this.$loopSelectionA.setAttributeNS(null, 'fill', 'white');
+    this.$loopSelectionA.setAttributeNS(null, 'y', '0');
+    this.$loopSelectionA.setAttributeNS(null, 'height', `${this.waveformHeight}`);
+    this.$loopSelectionA.style.opacity = 0.4;
+    this.$loopSelectionA.setAttributeNS(null, 'x', `${this.loopSelAMin}`);
+    this.$loopSelectionA.setAttributeNS(null, 'width', `${this.loopSelAWidth}`);
+
+    this.$loopSelectionB = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    this.$loopSelectionB.setAttributeNS(null, 'fill', 'white');
+    this.$loopSelectionB.setAttributeNS(null, 'y', '0');
+    this.$loopSelectionB.setAttributeNS(null, 'height', `${this.waveformHeight}`);
+    this.$loopSelectionB.style.opacity = 0.4;
+    this.$loopSelectionB.setAttributeNS(null, 'x', `${this.loopSelBMin}`);
+    this.$loopSelectionB.setAttributeNS(null, 'width', `${this.loopSelBWidth}`);
 
 
     // Analyzer 
@@ -116,14 +140,14 @@ export default class Mosaicing extends State {
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, scheduler);
     this.mosaicingSynth.connect(this.context.audioContext.destination);
-    this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
-    this.targetBufferSynth.connect(this.context.audioContext.destination);
+    // this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
+    // this.targetBufferSynth.connect(this.context.audioContext.destination);
 
 
-    this.mosaicingSynth.setAdvanceCallback((sourcePos, targetPos) => {
-      this.displayCursor(sourcePos * this.waveformWidth, this.$cursorSource);
-      // this.displayCursor(targetPos * this.waveformWidth, this.$cursorTarget);
-    });
+    // this.mosaicingSynth.setAdvanceCallback((sourcePos, targetPos) => {
+    //   this.displayCursor(sourcePos * this.waveformWidth, this.$cursorSource);
+    //   // this.displayCursor(targetPos * this.waveformWidth, this.$cursorTarget);
+    // });
 
     this.context.participant.subscribe(updates => {
       if ('mosaicingData' in updates) {
@@ -134,9 +158,10 @@ export default class Mosaicing extends State {
     setTimeout(() => {
       // Select played section on target waveform
       // this.$loopStartPos = 0;
-      const $svgWaveform = document.querySelector("#target-waveform");
-      $svgWaveform.addEventListener('mousedown', this.mouseDownTarget);
-      $svgWaveform.addEventListener('touchstart', this.touchStartTarget);
+      // const $svgWaveform = document.querySelector("#target-waveformA");
+      // $svgWaveform.addEventListener('mousedown', this.mouseDownTarget);
+      // $svgWaveform.addEventListener('touchstart', this.touchStartTarget);
+      this.$loopSelectionA.addEventListener('mousedown', this.mouseDownTargetA);
     }, 200);
     
     
@@ -156,13 +181,19 @@ export default class Mosaicing extends State {
   }
 
   selectTargetFile(targetBuffer) {
-    console.log("loading target");
-    this.targetBufferSynth.buffer = targetBuffer
+    // console.log("loading target");
+    // this.targetBufferSynth.buffer = targetBuffer;
     // this.currentTarget = targetBuffer;
     if (targetBuffer) {
       const [mfccFrames, times] = this.computeMfcc(targetBuffer);
-      this.displayWaveform(targetBuffer, this.$wvSvgTarget);
-      this.mosaicingSynth.setModel(mfccFrames);
+      if (this.recordingBuffer === 'A') {
+        this.displayWaveform(targetBuffer, this.$wvSvgTargetA);
+        this.mosaicingSynth.setModel(mfccFrames, 'A');
+      } else {
+        this.displayWaveform(targetBuffer, this.$wvSvgTargetB);
+        this.mosaicingSynth.setModel(mfccFrames, 'B');
+      }
+      
     }
   }
 
@@ -230,23 +261,6 @@ export default class Mosaicing extends State {
     this.render();
   }
 
-  transportTargetFile(state) {
-    switch (state) {
-      case 'play':
-        this.targetBufferSynth.play(this.context.audioContext.currentTime);
-
-        this.targetBufferSynth.addEventListener('ended', () => {
-          const $transportTarget = document.querySelector('#transport-target');
-          $transportTarget.state = 'stop';
-        });
-
-        break;
-      case 'stop':
-        this.targetBufferSynth.stop(this.context.audioContext.currentTime);
-        break;
-    }
-  }
-
 
   transportSourceFile(state) {
     switch (state) {
@@ -273,10 +287,10 @@ export default class Mosaicing extends State {
       case 'play':
         this.mosaicingSynth.start();
 
-        this.mosaicingSynth.setClearCallback(() => {
-          const $transportMosaicing = document.querySelector('#transport-mosaicing');
-          $transportMosaicing.state = 'stop';
-        });
+        // this.mosaicingSynth.setClearCallback(() => {
+        //   const $transportMosaicing = document.querySelector('#transport-mosaicing');
+        //   $transportMosaicing.state = 'stop';
+        // });
         break;
       case 'stop':
         this.mosaicingSynth.stop();
@@ -284,11 +298,16 @@ export default class Mosaicing extends State {
     }
   }
 
-  mouseDownTarget(e) {    
+  startRecording(which) {
+    this.recordingBuffer = which;
+    this.context.mediaRecorder.start();
+  }
 
+  mouseDownTargetA(e) {    
     e.preventDefault(); // Prevent selection
-    this.clickXPos = e.clientX;
+    this.clickBufferLetter = 'A';
     this.clickTargetDim = e.currentTarget.getBoundingClientRect();
+    this.mouseXPos = e.clientX;
     window.addEventListener('mousemove', this.mouseMoveTarget);
     window.addEventListener('mouseup', this.mouseUpTarget);
 
@@ -296,78 +315,110 @@ export default class Mosaicing extends State {
 
   mouseMoveTarget(e) {
     e.preventDefault(); // Prevent selection
-    this.selectLimits(e, this.clickXPos, this.clickTargetDim);
+
+
+    const mouseMov = e.clientX - this.mouseXPos;
+
+    this.loopSelAMin = this.loopSelectionAOffset + mouseMov;
+    // this.mouseXPos = e.clientX;
+    this.loopSelAMin = Math.min(Math.max(0, this.loopSelAMin), this.waveformWidth - this.loopSelAWidth);
+    this.$loopSelectionA.setAttributeNS(null, 'x', `${this.loopSelAMin}`);
+
+    // const movX = e.movementX;
+    // this.loopSelAMin += movX;
+    // this.loopSelAMin = Math.max(0, this.loopSelAMin)
+    // this.loopSelAMin = Math.min(Math.max(0, this.loopSelAMin), this.waveformWidth - this.loopSelAWidth);
+  //   this.$loopStartPos = Math.min(clickPos, movePos);
+  //   this.$loopEndPos = Math.max(clickPos, movePos);
+  //   this.$loopSelection.setAttributeNS(null, 'x', `${this.$loopStartPos}`);
+  //   this.$loopSelection.setAttributeNS(null, 'width', `${this.$loopEndPos-this.$loopStartPos}`);
+  //   if (this.$loopEndPos - this.$loopStartPos > 0) {
+  //     this.mosaicingSynth.setLoopLimits(this.$loopStartPos, this.$loopEndPos, this.waveformWidth);
+  //     this.targetBufferSynth.setSelectionLimits(this.$loopStartPos, this.$loopEndPos);
+  //   } else {
+  //     this.mosaicingSynth.setLoopLimits(0, this.waveformWidth, this.waveformWidth);
+  //     this.targetBufferSynth.setSelectionLimits(0, this.waveformWidth);
+  //   }
+  //   // this.targetPlayerNode.loopStart = this.currentTarget.duration * this.$loopStartPos/this.waveformWidth;
+  //   // this.targetPlayerNode.loopEnd = this.currentTarget.duration * this.$loopEndPos/this.waveformWidth;
+    // this.selectLimits(e, this.clickBufferLetter, this.clickXPos, this.clickTargetDim);
   }
 
   mouseUpTarget(e) {
+    // const upPos = e.clientX - this.clickTargetDim.left;
+    // const totalMove = upPos - this.clickXPos;
+    // this.loopSelAMin += totalMove;
+    this.loopSelectionAOffset = this.loopSelAMin;
     window.removeEventListener('mousemove', this.mouseMoveTarget);
     window.removeEventListener('mouseup', this.mouseUpTarget);
   }
 
-  touchStartTarget(e) {
-    e.preventDefault();
+  // touchStartTarget(e) {
+  //   e.preventDefault();
 
-    if (this.pointerIds.length === 0) {
-      window.addEventListener('touchmove', this.touchMoveTarget, {passive: false});
-      window.addEventListener('touchend', this.touchEndTarget);
-      window.addEventListener('touchcancel', this.touchEndTarget);
-    }
+  //   if (this.pointerIds.length === 0) {
+  //     window.addEventListener('touchmove', this.touchMoveTarget, {passive: false});
+  //     window.addEventListener('touchend', this.touchEndTarget);
+  //     window.addEventListener('touchcancel', this.touchEndTarget);
+  //   }
 
-    for (let touch of e.changedTouches) {
-      this.clickXPos = touch.clientX;
-      this.clickTargetDim = e.currentTarget.getBoundingClientRect();
-      const id = touch.identifier;
-      this.pointerIds.push(id);
-      this.activePointers.set(id, touch);
-    }
-  }
+  //   for (let touch of e.changedTouches) {
+  //     this.clickXPos = touch.clientX;
+  //     this.clickTargetDim = e.currentTarget.getBoundingClientRect();
+  //     const id = touch.identifier;
+  //     this.pointerIds.push(id);
+  //     this.activePointers.set(id, touch);
+  //   }
+  // }
 
-  touchMoveTarget(e) {
-    e.preventDefault();
+  // touchMoveTarget(e) {
+  //   e.preventDefault();
 
-    for (let touch of e.changedTouches) {
-      const id = touch.identifier;
-      if (this.pointerIds.indexOf(id) !== -1) {
-        this.activePointers.set(id, touch);
-        this.selectLimits(touch, this.clickXPos, this.clickTargetDim);
-      }
-    }
-  }
+  //   for (let touch of e.changedTouches) {
+  //     const id = touch.identifier;
+  //     if (this.pointerIds.indexOf(id) !== -1) {
+  //       this.activePointers.set(id, touch);
+  //       this.selectLimits(touch, this.clickXPos, this.clickTargetDim);
+  //     }
+  //   }
+  // }
 
-  touchEndTarget(e) {
-    for (let touch of e.changedTouches) {
-      const pointerId = touch.identifier;
-      const index = this.pointerIds.indexOf(pointerId);
-      if (index !== -1) {
-        this.pointerIds.splice(index, 1);
-        this.activePointers.delete(pointerId);
-      }
-    }
+  // touchEndTarget(e) {
+  //   for (let touch of e.changedTouches) {
+  //     const pointerId = touch.identifier;
+  //     const index = this.pointerIds.indexOf(pointerId);
+  //     if (index !== -1) {
+  //       this.pointerIds.splice(index, 1);
+  //       this.activePointers.delete(pointerId);
+  //     }
+  //   }
 
-    if (this.pointerIds.length === 0) {
-      window.removeEventListener('touchmove', this.touchMoveTarget);
-      window.removeEventListener('touchend', this.touchEndTarget);
-      window.removeEventListener('touchcancel', this.touchEndTarget);
-    }
-  }
+  //   if (this.pointerIds.length === 0) {
+  //     window.removeEventListener('touchmove', this.touchMoveTarget);
+  //     window.removeEventListener('touchend', this.touchEndTarget);
+  //     window.removeEventListener('touchcancel', this.touchEndTarget);
+  //   }
+  // }
 
-  selectLimits(event, clickX, dim) {
-    const clickPos = clickX - dim.left;
-    const movePos = event.clientX - dim.left;
-    this.$loopStartPos = Math.min(clickPos, movePos);
-    this.$loopEndPos = Math.max(clickPos, movePos);
-    this.$loopSelection.setAttributeNS(null, 'x', `${this.$loopStartPos}`);
-    this.$loopSelection.setAttributeNS(null, 'width', `${this.$loopEndPos-this.$loopStartPos}`);
-    if (this.$loopEndPos - this.$loopStartPos > 0) {
-      this.mosaicingSynth.setLoopLimits(this.$loopStartPos, this.$loopEndPos, this.waveformWidth);
-      this.targetBufferSynth.setSelectionLimits(this.$loopStartPos, this.$loopEndPos);
-    } else {
-      this.mosaicingSynth.setLoopLimits(0, this.waveformWidth, this.waveformWidth);
-      this.targetBufferSynth.setSelectionLimits(0, this.waveformWidth);
-    } 
-    // this.targetPlayerNode.loopStart = this.currentTarget.duration * this.$loopStartPos/this.waveformWidth;
-    // this.targetPlayerNode.loopEnd = this.currentTarget.duration * this.$loopEndPos/this.waveformWidth;
-  }
+  // selectLimits(event, clickX, dim) {
+  //   const clickPos = clickX - dim.left;
+  //   const movePos = event.clientX - dim.left;
+  //   this.$loopStartPos = Math.min(clickPos, movePos);
+  //   this.$loopEndPos = Math.max(clickPos, movePos);
+  //   this.$loopSelection.setAttributeNS(null, 'x', `${this.$loopStartPos}`);
+  //   this.$loopSelection.setAttributeNS(null, 'width', `${this.$loopEndPos-this.$loopStartPos}`);
+  //   if (this.$loopEndPos - this.$loopStartPos > 0) {
+  //     this.mosaicingSynth.setLoopLimits(this.$loopStartPos, this.$loopEndPos, this.waveformWidth);
+  //     this.targetBufferSynth.setSelectionLimits(this.$loopStartPos, this.$loopEndPos);
+  //   } else {
+  //     this.mosaicingSynth.setLoopLimits(0, this.waveformWidth, this.waveformWidth);
+  //     this.targetBufferSynth.setSelectionLimits(0, this.waveformWidth);
+  //   } 
+  //   // this.targetPlayerNode.loopStart = this.currentTarget.duration * this.$loopStartPos/this.waveformWidth;
+  //   // this.targetPlayerNode.loopEnd = this.currentTarget.duration * this.$loopEndPos/this.waveformWidth;
+  // }
+
+  // moveSelectionA( )
 
 
   render() {
@@ -375,29 +426,6 @@ export default class Mosaicing extends State {
         <div style="padding: 20px">
           <h1 style="margin: 20px 0">${this.context.participant.get('name') } [id: ${this.context.client.id}]</h1>
         </div>
-
-        <div style="padding-left: 20px">
-          <p style="display: inline">
-            Send mosaicing data to : 
-          </p> 
-          <select 
-            style="display: inline"
-            @change="${e => this.mosaicingSynth.targetPlayerState = this.context.players[e.target.value]}"
-          >
-            ${Array.from(Object.keys(this.context.players)).map(playerId => {
-              const playerState = this.context.players[playerId];
-              const name = playerState.get('name');
-              if (parseInt(playerId) === this.context.participant.id) {
-                return html`<option value="${playerId}" selected>${name} (you)</option>`;
-              } else {
-                return html`<option value="${playerId}">${name}</option>`;
-              }
-            })
-            }
-          </select>
-        </div>
-
-        <div></div>
 
         <div style="padding-left: 20px; padding-right: 20px">
           <h3>Source</h3>
@@ -415,7 +443,7 @@ export default class Mosaicing extends State {
               width=${this.waveformWidth}
               height=${this.waveformHeight}
               style="
-                background-color: black
+                background-color: #1b1b1b
               "
             >
               ${this.$wvSvgSource}
@@ -428,7 +456,7 @@ export default class Mosaicing extends State {
                 left: 0;
               " 
             >
-              play file :
+              preview :
             </p>
             <sc-transport
               id="transport-source"
@@ -440,134 +468,64 @@ export default class Mosaicing extends State {
               buttons="[play, stop]"
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
-            <p
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 140px;
-              "
-            >
-              mosaicing :
-            </p>
-
-            <sc-transport
-              id="transport-mosaicing"
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 210px;
-              "
-              buttons="[play, stop]"
-              @change="${e => this.transportMosaicing(e.detail.value)}"
-            ></sc-transport>
-
-            <sc-slider
-              style="
-                position: absolute;
-                left: ${this.waveformWidth + 10}px;
-                bottom: 0;
-              "
-              height="${this.waveformHeight}"
-              width="30"
-              orientation="vertical"
-              @input=${e => this.mosaicingSynth.volume = e.detail.value }
-            ></sc-slider>
-            <sc-slider
-              style="
-                position: absolute;
-                left: ${this.waveformWidth + 50}px;
-                bottom: 0;
-              "
-              height="${this.waveformHeight}"
-              width="30"
-              orientation="vertical"
-              min="${this.grainPeriod/2}"
-              max="${this.grainPeriod*2}"
-              value="${this.grainPeriod}"
-              @input=${e => this.mosaicingSynth.grainPeriod = e.detail.value }
-            ></sc-slider>
-            <sc-slider
-              style="
-                position: absolute;
-                left: ${this.waveformWidth + 90}px;
-                bottom: 0;
-              "
-              height="${this.waveformHeight}"
-              width="30"
-              orientation="vertical"
-              min="${this.grainDuration / 2}"
-              max="${this.grainDuration * 2}"
-              value="${this.grainDuration}"
-              @input=${e => this.mosaicingSynth.grainDuration = e.detail.value }
-            ></sc-slider>
         </div>
 
-        <div>
-            <h3>Target</h3>
+        <div style="padding: 20px">
+          <sc-transport
+              style="display: block"
+              id="transport-mosaicing"
+              buttons="[play, stop]"
+              width="50"
+              @change="${e => this.transportMosaicing(e.detail.value)}"
+            ></sc-transport>
+        </div>
 
-            <sc-file-tree
-              value="${JSON.stringify(this.context.soundbankTreeRender)}";
-              @input="${e => this.selectTargetFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
-            ></sc-file-tree>
+        <h3>Target</h3>
 
-            <div style="
-              display: inline;
-              position: relative;"
-            >
-              <svg
-                id="target-waveform";
-                width=${this.waveformWidth}
-                height=${this.waveformHeight}
-                style="
-                  background-color: black
-                "
-              >
-                ${this.$loopSelection}
-                ${this.$wvSvgTarget}
-                ${this.$cursorTarget}
-              </svg>
-              <sc-transport
-                id="transport-target"
-                style="
-                  position: absolute;
-                  bottom: 0;
-                  left: 0;
-                "
-                buttons="[play, stop]"
-                @change="${e => this.transportTargetFile(e.detail.value)}"
-              ></sc-transport>
-              <sc-loop
-                style="
-                  position: absolute;
-                  bottom: 0;
-                  left: 65px;
-                "
-                @change="${e => {
-                  this.mosaicingSynth.loop = e.detail.value;
-                  this.targetBufferSynth.loop = e.detail.value;
-                }}"
-              ></sc-loop>
-              <sc-record
-                style="
-                  position: absolute;
-                  bottom: 0;
-                  left: 97px;
-                "
-                @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-              ></sc-record>
-              <sc-slider
-                style="
-                  position: absolute;
-                  left: ${this.waveformWidth + 10}px;
-                  bottom: 0;
-                "
-                height="${this.waveformHeight}"
-                width="30"
-                orientation="vertical"
-                @input=${e => this.targetBufferSynth.volume = e.detail.value }
-              ></sc-slider>
-            </div>
+        <div style="position: relative">
+          <svg
+            id="target-waveformA";
+            width=${this.waveformWidth}
+            height=${this.waveformHeight}
+            style="
+              background-color: #1c1c1c
+            "
+          >
+            ${this.$wvSvgTargetA}
+            ${this.$cursorTarget}
+            ${this.$loopSelectionA}
+          </svg>
+          <sc-record
+            style="
+              position: absolute;
+              bottom: 10px;
+              left: 10px;
+            "
+            @change="${e => e.detail.value ? this.startRecording('A') : this.context.mediaRecorder.stop()}"
+          ></sc-record>
+        </div>
 
+        <div style="position: relative">
+          <svg
+            id="target-waveformB";
+            width=${this.waveformWidth}
+            height=${this.waveformHeight}
+            style="
+              background-color: #1c1c1c
+            "
+          >
+            ${this.$wvSvgTargetB}
+            ${this.$cursorTarget}
+            ${this.$loopSelectionB}
+          </svg>
+          <sc-record
+            style="
+              position: absolute;
+              bottom: 10px;
+              left: 10px;
+            "
+            @change="${e => e.detail.value ? this.startRecording('B') : this.context.mediaRecorder.stop()}"
+          ></sc-record>
         </div>
 
       `
