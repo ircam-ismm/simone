@@ -14,6 +14,7 @@ import pluginFilesystemFactory from '@soundworks/plugin-filesystem/server';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/server';
 
 import participantSchema from './schemas/participant.js';
+import globalSchema from './schemas/global.js';
 
 import getConfig from '../utils/getConfig.js';
 const ENV = process.env.ENV || 'default';
@@ -56,15 +57,19 @@ server.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFact
 // -------------------------------------------------------------------
 // server.stateManager.registerSchema(name, schema);
 server.stateManager.registerSchema('participant', participantSchema);
+server.stateManager.registerSchema('global', globalSchema);
 
 (async function launch() {
   try {
+    
+
     await server.init(config, (clientType, config, httpRequest) => {
       return {
         clientType: clientType,
         app: {
           name: config.app.name,
           author: config.app.author,
+          system: config.app.system,
         },
         env: {
           type: config.env.type,
@@ -72,6 +77,10 @@ server.stateManager.registerSchema('participant', participantSchema);
           subpath: config.env.subpath,
         }
       };
+    });
+
+    const global = await server.stateManager.create('global', {
+      system: server.config.app.system
     });
 
     const playerExperience = new PlayerExperience(server, 'player');
@@ -82,15 +91,6 @@ server.stateManager.registerSchema('participant', participantSchema);
     playerExperience.start();
     controllerExperience.start();
 
-    const oscConfig = { // these are the defaults
-      localAddress: '0.0.0.0',
-      localPort: 57121,
-      remoteAddress: '127.0.0.1',
-      remotePort: 57122,
-    };
-
-    const oscStateManager = new StateManagerOsc(server.stateManager, oscConfig);
-    await oscStateManager.init();
 
   } catch (err) {
     console.error(err.stack);

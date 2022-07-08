@@ -28,6 +28,8 @@ class PlayerExperience extends AbstractExperience {
   async start() {
     super.start();
 
+    this.global = await this.client.stateManager.attach('global');
+
     this.stateMachine = new StateMachine(this);
 
     this.players = {};
@@ -103,7 +105,7 @@ class PlayerExperience extends AbstractExperience {
     if (SKIP_NAME) {
       await this.participant.set({
         name: 'user',
-        state: 'mosaicing',
+        state: 'performance',//this.global.get('system'),
       });
     } else {
       this.participant.set({ state: 'configure-name' });

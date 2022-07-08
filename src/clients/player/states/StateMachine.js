@@ -1,9 +1,17 @@
 import ConfigureName from './ConfigureName.js';
-import Mosaicing from './Mosaicing.js'
+import DrumMachine from './DrumMachine.js';
+import SolarSystem from './SolarSystem.js';
+import SolarSystemOmega from './SolarSystemOmega.js';
+import NoMicrophone from './NoMicrophone.js';
+import PerformanceState from './PerformanceState.js';
 
 const states = {
   'configure-name': ConfigureName,
-  'mosaicing': Mosaicing,
+  'drum-machine': DrumMachine,
+  'solar-system': SolarSystem,
+  'solar-system-omega': SolarSystemOmega,
+  'no-microphone': NoMicrophone,
+  'performance': PerformanceState,
 };
 
 class StateMachine {

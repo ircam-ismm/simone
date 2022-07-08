@@ -16,7 +16,7 @@ export default class ConfigureName extends State {
     if (name !== '') {
       await this.context.participant.set({
         name: name,
-        state: 'mosaicing',
+        state: 'drum-machine',
       });
     }
   }
