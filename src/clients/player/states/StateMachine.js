@@ -1,14 +1,22 @@
-import ConfigureName from './ConfigureName.js';
 import DrumMachine from './DrumMachine.js';
-import SolarSystem from './SolarSystem.js';
+import SolarSystemSatellite from './SolarSystemSatellite.js';
 import SolarSystemOmega from './SolarSystemOmega.js';
+import SolarSystemDispatch from './SolarSystemDispatch.js';
 import NoMicrophone from './NoMicrophone.js';
 import PerformanceState from './PerformanceState.js';
+import ClonePlaying from './ClonePlaying.js';
+import CloneRecording from './CloneRecording.js';
+import CloneWaiting from './CloneWaiting.js';
 
 const states = {
-  'configure-name': ConfigureName,
   'drum-machine': DrumMachine,
-  'solar-system': SolarSystem,
+  'clone': CloneRecording,
+  'clone-recording': CloneRecording,
+  'clone-waiting': CloneWaiting,
+  'clone-playing': ClonePlaying,
+  'solar-system': SolarSystemDispatch,
+  'solar-system-dispatch': SolarSystemDispatch,
+  'solar-system-satellite': SolarSystemSatellite,
   'solar-system-omega': SolarSystemOmega,
   'no-microphone': NoMicrophone,
   'performance': PerformanceState,

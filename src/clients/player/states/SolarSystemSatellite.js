@@ -6,19 +6,20 @@ import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
 import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformDisplay from '../WaveformDisplay';
+import createKDTree from 'static-kdtree';
 import MosaicingSynth from '../MosaicingSynth';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
 
-export default class SolarSystemOmega extends State {
+export default class SolarSystemSatellite extends State {
   constructor(name, context) {
     super(name, context);
 
     this.currentSource = null;
     this.currentTarget = null;
-
-    // audio analysis
+ 
+    // parameters for audio analysis
     this.frameSize = 4096;
     this.hopSize = 512;
     this.sourceSampleRate = this.context.audioContext.sampleRate;
@@ -29,35 +30,14 @@ export default class SolarSystemOmega extends State {
 
     // Waveform display
     this.waveformWidth = 600;
-    this.waveformHeight = 150;
+    this.waveformHeight = 200;
 
     this.targetPlayerState = this.context.participant;
   }
 
   async enter() {
-    // Microphone handling 
-    this.context.mediaRecorder.addEventListener('dataavailable', (e) => {
-      if (e.data.size > 0) {
-        this.context.fileReader.readAsArrayBuffer(e.data);
-      };
-    });
-
-    this.context.fileReader.addEventListener('loadend', async () => {
-      const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
-      this.recordedBuffer = audioBuffer;
-      this.recorderDisplay.setBuffer(audioBuffer);
-    });
-
     // Waveform display
-    this.targetDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, true, true, true);
-    this.recorderDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, false, false);
-
-    // Callback for when selection on the display is changed
-    this.targetDisplay.setCallbackSelectionChange((start, end) => {
-      this.selectionStart = start;
-      this.selectionEnd = end;
-      this.mosaicingSynth.setLoopLimits(start, end);
-    });
+    this.sourceDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, false, true);
 
     // Analyzer 
     this.mfcc = new Mfcc({
@@ -72,7 +52,9 @@ export default class SolarSystemOmega extends State {
       sourceSampleRate: this.sourceSampleRate,
     });
 
-    // Synth (does not produce sound here)
+    // Synth
+    this.playing = false; // whether or not sound is playing (this is controlled by omega)
+
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
@@ -84,46 +66,53 @@ export default class SolarSystemOmega extends State {
     this.grainPeriod = 2048 / this.sourceSampleRate;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.targetPlayerState = this.context.participant;
-    
+    this.mosaicingSynth.connect(this.context.audioContext.destination);
+
     // Callback for displaying cursors
     // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
     //   this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
     //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // });
+    // })
 
+    this.context.participant.subscribe(updates => {
+      if ('mosaicingActive' in updates) {
+        this.playing = updates.mosaicingActive;
+      }
+    });
 
-    //Other players
-    this.players = {};
-
+    // find player Ω and subscribe to incoming data
     this.context.client.stateManager.observe(async (schemaName, stateId, nodeId) => {
       switch (schemaName) {
         case 'participant':
           const playerState = await this.context.client.stateManager.attach(schemaName, stateId);
           const playerName = playerState.get('name');
-          if (playerName !== 'Ω') {
-            playerState.onDetach(() => {
-              delete this.players[playerName];
-              this.context.render();
+          if (playerName === 'Ω') {
+            playerState.subscribe(updates => {
+              if ('mosaicingData' in updates) {
+                if (this.playing) {
+                  //this is received as an object
+                  // console.log('receiving', updates.mosaicingSynth)
+                  this.mosaicingSynth.pushData(Object.values(updates.mosaicingData));
+                }
+              }
             });
-            this.players[playerName] = playerState;
-            this.context.render();
           }
           break;
       }
     });
+
   }
 
-
-  setTargetFile(targetBuffer) {
-    if (targetBuffer) {
-      this.currentTarget = targetBuffer;
-      const analysis = this.computeMfcc(targetBuffer);
-      this.mosaicingSynth.setTarget(targetBuffer);
-      this.mosaicingSynth.setNorm(analysis[2], analysis[3]);
-      this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
-      this.mosaicingSynth.start();
-      this.targetDisplay.setBuffer(targetBuffer);
+  setSourceFile(sourceBuffer) {
+    console.log("loading source");
+    this.currentSource = sourceBuffer;
+    if (sourceBuffer) {
+      const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
+      const searchTree = createKDTree(mfccFrames);
+      console.log("Tree created")
+      this.mosaicingSynth.setBuffer(sourceBuffer);
+      this.mosaicingSynth.setSearchSpace(searchTree, times);
+      this.sourceDisplay.setBuffer(sourceBuffer);
     }
   }
 
@@ -169,26 +158,26 @@ export default class SolarSystemOmega extends State {
     return [mfccFrames, times, means, std];
   }
 
-
-  transportRecordFile(state) {
+  transportSourceFile(state) {
     switch (state) {
       case 'play':
-        this.recorderPlayerNode = new AudioBufferSourceNode(this.context.audioContext);
-        this.recorderPlayerNode.buffer = this.recordedBuffer;
-        this.recorderPlayerNode.connect(this.context.audioContext.destination);
+        this.sourcePlayerNode = new AudioBufferSourceNode(this.context.audioContext);
+        this.sourcePlayerNode.buffer = this.currentSource;
+        this.sourcePlayerNode.connect(this.context.audioContext.destination);
 
-        this.recorderPlayerNode.start();
+        this.sourcePlayerNode.start();
 
-        this.recorderPlayerNode.addEventListener('ended', event => {
-          const $transportSource = document.querySelector('#transport-recorder');
+        this.sourcePlayerNode.addEventListener('ended', event => {
+          const $transportSource = document.querySelector('#transport-source');
           $transportSource.state = 'stop';
         });
         break;
       case 'stop':
-        this.recorderPlayerNode.stop();
+        this.sourcePlayerNode.stop();
         break;
     }
   }
+
 
 
   render() {
@@ -197,79 +186,103 @@ export default class SolarSystemOmega extends State {
           <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
         </div>
 
-        <div style="position: relative; padding-left: 20px; padding-right: 20px">
-          <h3>Target</h3>
+        <div style="padding-left: 20px; padding-right: 20px">
 
-          <div style="position: relative">
-            ${this.targetDisplay.render()}
-          </div>
+          <h3>Source</h3>
 
-          <div style="position: relative">
-            ${this.recorderDisplay.render()}
-            <sc-record
+          <sc-file-tree
+            value="${JSON.stringify(this.context.soundbankTreeRender)}";
+            @input="${e => this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
+          ></sc-file-tree>
+
+          <div style="
+            display: inline;
+            margin: 20px;
+            position: relative;"
+          >
+            ${this.sourceDisplay.render()}
+            <p
               style="
                 position: absolute;
-                bottom: 10px;
-                left: 10px;
-              "
-              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-            ></sc-record>
+                bottom: 0;
+                left: 0;
+              " 
+            >
+              preview :
+            </p>
             <sc-transport
-              id="transport-recorder"
+              id="transport-source"
               style="
                 position: absolute;
-                bottom: 10px;
-                left: 45px;
+                bottom: 0;
+                left: 70px;
               "
               buttons="[play, stop]"
-              @change="${e => this.transportRecordFile(e.detail.value)}"
+              @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
-            <sc-button
+          </div>
+
+          <div style="margin: 20px; padding: 20px; position: relative">
+
+            <div
               style="
                 position: absolute;
-                bottom: 10px;
-                left: 110px;
+                top: 0;
+                left: 0px;
               "
-              height="29";
-              width="140";
-              text="send to target"
-              @input="${e => this.setTargetFile(this.recordedBuffer)}"
-            ></sc-button>
-          </div>
+            >
+              <h3>volume</h3>
+              <sc-slider
+                min="0"
+                max="1"
+                value="0.5"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
+              ></sc-slider>
 
-          <div
-            style="
-              position: absolute;
-              top: 0px;
-              left: ${this.waveformWidth + 40}px;
-              width: 400px;
-            "
-          >
-            <h3>Players</h3>
+              <h3>detune</h3>
+              <sc-slider
+                min="-24"
+                max="24"
+                value="0"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
+              ></sc-slider>
 
-            <div>
-              ${Object.entries(this.players).map(([name, state]) => {
-                return html`
-                  <div style="display: flex; justify-content: space-around; margin-bottom: 20px">
-                    <h2 style="
-                      "
-                    >
-                      ${name}
-                    </h2>
+            </div>
 
-                    <sc-transport
-                      buttons="[play, stop]"
-                      width="50"
-                      @change="${e => e.detail.value === 'play' 
-                        ? state.set({ mosaicingActive: true })
-                        : state.set({ mosaicingActive: false })
-                      }"
-                    ></sc-transport>
-                  </div>
-                `;
-              })}
+            <div
+              style="
+                position: absolute;
+                top: 0;
+                left: 330px;
+              "
+            >
+
+              <h3>grain period</h3>
+              <sc-slider
+                min="0.0058"
+                max="0.046"
+                value="0.046"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
+              ></sc-slider>
+
+              <h3>grain duration</h3>
+              <sc-slider
+                min="0.02321995"
+                max="0.18575964"
+                value="0.0928"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
+              ></sc-slider>
             </div>
           </div>
+          
 
         </div>
       `

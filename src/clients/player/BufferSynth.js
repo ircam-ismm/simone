@@ -13,6 +13,8 @@ class BufferSynth {
     this._loopStart = null; // in s
     this._loopEnd = null; // in s
 
+    this._detune = 0;
+
     this.timeLastStart = 0;
     this.playing = false;
 
@@ -31,14 +33,22 @@ class BufferSynth {
     this.output.gain.linearRampToValueAtTime(value, this.audioContext.currentTime+0.05);
   }
 
+  set detune(value) {
+    this._detune = value;
+    if (this.playing) {
+      const now = this.audioContext.currentTime;
+      this.bufferPlayerNode.detune.setTargetAtTime(value, now, 0.1);
+    }
+  }
+
   set loop(flag) {
     this._loop = flag;
     if (this.playing) { // if playing we want to change loop status without disrupting playback
       const now = this.audioContext.currentTime; 
-      const selectionLength = this._loopEnd - this._loopStart;
-      let currentBufferTime = now - this.timeLastStart + this._loopStart; // get position in time in buffer
-      while (currentBufferTime - this._loopStart > selectionLength) {
-        currentBufferTime -= selectionLength; // modulo if needed
+      const selectionLength = this.endTime - this.start;
+      let currentBufferTime = now - this.timeLastStart + this.startTime; // get position in time in buffer
+      while (currentBufferTime - this.startTime > selectionLength) {
+        currentBufferTime -= selectionLength; // modulo if needed;
       }
       // Stop and restart with loop status changed
       clearTimeout(this.nextStop);
@@ -68,6 +78,23 @@ class BufferSynth {
     }
   }
 
+  setLoopLimits(startTime, endTime) {
+    const now = this.audioContext.currentTime
+    const newSel = startTime !== this.startTime && endTime !== this.endTime;
+    this.startTime = startTime;
+    this.endTime = endTime;
+    if (this.playing && this._loop) {
+      if (newSel) {
+        this.bufferPlayerNode.stop(now);
+        this.play(now);
+      } else {
+        this.bufferPlayerNode.loopStart = this.startTime;
+        this.bufferPlayerNode.loopEnd = this.endTime;
+      }
+    }
+    // this.startIndex = this.timeToIndex(startTime);
+    // this.endIndex = this.timeToIndex(endTime);
+  }
 
 
   connect(dest) {
@@ -76,21 +103,20 @@ class BufferSynth {
 
   play(time, offset, notResetTime) {
     notResetTime = notResetTime ? true : false; // if not specified
-    offset = offset ? offset : this._loopStart;
+    offset = offset ? offset : this.startTime;
     this.bufferPlayerNode = new AudioBufferSourceNode(this.audioContext);
     this.bufferPlayerNode.buffer = this._buffer;
+    this.bufferPlayerNode.detune.value = this._detune;
     this.bufferPlayerNode.connect(this.output);
-    console.log(this._loop, offset, this._loopStart, this._loopEnd, this._duration);
     if (this._loop) {
+      console.log('new loop', this.startTime, this.endTime);
       this.bufferPlayerNode.loop = true;
-      this.bufferPlayerNode.loopStart = this._loopStart;
-      this.bufferPlayerNode.loopEnd = this._loopEnd;
-      console.log('here...');
+      this.bufferPlayerNode.loopStart = this.startTime;
+      this.bufferPlayerNode.loopEnd = this.endTime;
       this.start(time, offset);
     } else {
-      const dur = this._loopEnd ? this._loopEnd - offset : this._duration - offset;
+      const dur = this.endTime ? this.endTime - offset : this._duration - offset;
 
-      console.log('... and there', dur);
       this.start(time, offset, dur);
     } 
     if (!notResetTime) {
@@ -119,7 +145,6 @@ class BufferSynth {
 
     this.playing = false;
     const cb = this.callbacks['ended'];
-    console.log('hello')
     cb();
 
     this.bufferPlayerNode.stop(time);

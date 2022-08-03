@@ -12,5 +12,6 @@
     },
   },
 
-  system: 'drum-machine'
+  system: 'solar-system-dispatch',
+  nPlayers: 3,
 }

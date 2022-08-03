@@ -12,14 +12,14 @@ import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
 
-export default class DrumMachine extends State {
+export default class ClonePlaying extends State {
   constructor(name, context) {
     super(name, context);
 
     this.currentSource = null;
     this.currentTarget = null;
 
-    // parameters for audio analysis
+    // Parameters for audio analysis
     this.frameSize = 4096;
     this.hopSize = 512;
     this.sourceSampleRate = this.context.audioContext.sampleRate;
@@ -27,11 +27,6 @@ export default class DrumMachine extends State {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
-
-    // Mosaicing
-    this.bpm = 120; 
-    this.nFramesBeat = 8; // length of the looping section (in number of frames)
-    this.maxNFramesBeat = 32 // maximum length of looping section (in n of frames)
 
     // Waveform display
     this.waveformWidth = 800;
@@ -51,17 +46,16 @@ export default class DrumMachine extends State {
 
     this.context.fileReader.addEventListener('loadend', async () => {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
-      // const [mfccFrames, times] = this.computeMfcc(audioBuffer);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
     });
 
-    // Waveforms display
+    // Waveform display
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidth, false, true);
-    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, false);
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, true);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, false, false);
 
-    // Callback for when selection on the display is moved
+    // Callback for when selection on the display is modified
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
@@ -94,12 +88,12 @@ export default class DrumMachine extends State {
     this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
       this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    });
+    })
 
-  }
-
-  setSourceFile(sourceBuffer) {
-    console.log("loading source");
+    // Fetching recording to use as a source sound from the server
+    const nPlayers = this.context.global.get('nPlayers');
+    const idSourceToGet = (this.context.checkinId + 1)%nPlayers;
+    const sourceBuffer = this.context.audioBufferLoader.data[`recording-player-${idSourceToGet}.ogg`];
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
       const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
@@ -111,17 +105,14 @@ export default class DrumMachine extends State {
     }
   }
 
+
   setTargetFile(targetBuffer) {
-    this.currentTarget = targetBuffer;
     if (targetBuffer) {
+      this.currentTarget = targetBuffer;
       const analysis = this.computeMfcc(targetBuffer);
       this.mosaicingSynth.setTarget(targetBuffer);
       this.mosaicingSynth.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
-      // setting looping section back to 0
-      this.targetDisplay.setSelectionStartTime(0);
-      this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sourceSampleRate);
-      this.selectionLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
     }
   }
 
@@ -168,7 +159,6 @@ export default class DrumMachine extends State {
   }
 
   transportSourceFile(state) {
-    // callback for handling transport buttons on source sound display
     switch (state) {
       case 'play':
         this.sourcePlayerNode = new AudioBufferSourceNode(this.context.audioContext);
@@ -189,7 +179,6 @@ export default class DrumMachine extends State {
   }
 
   transportRecordFile(state) {
-    // callback for handling transport buttons on transport sound display
     switch (state) {
       case 'play':
         this.recorderPlayerNode = new AudioBufferSourceNode(this.context.audioContext);
@@ -210,42 +199,14 @@ export default class DrumMachine extends State {
   }
 
   transportMosaicing(state) {
-    // Callback for handling transport buttons for mosaicing
     switch (state) {
       case 'play':
-        // Mosaicing must start at a time synced with the other players
-        const beatLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
-        const currentSyncTime = this.context.sync.getSyncTime();
-        const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
-        const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => this.mosaicingSynth.start(), nextStartTimeLocal);
+        this.mosaicingSynth.start()
         break;
       case 'stop':
         this.mosaicingSynth.stop();
         break;
     }
-  }
-
-  changeSelectionLength(type) {
-    // Callback for changing length of looping section (*2 or /2)
-    if (type === 'longer') {
-      const newLength = this.selectionLength * 2;
-      // New looping section must not go out of bounds and is cannot exceed max value
-      if (this.nFramesBeat * 2 <= this.maxNFramesBeat && this.selectionStart + newLength < this.currentTarget.duration) {
-        this.nFramesBeat *= 2;
-        this.selectionLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
-        this.targetDisplay.setSelectionLength(this.selectionLength);
-      }
-    } else {
-      // New looping section must not last less than a frame long
-      if (this.nFramesBeat / 2 >= 1) {
-        this.nFramesBeat /= 2;
-        this.selectionLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
-        this.targetDisplay.setSelectionLength(this.selectionLength);
-      }
-
-    }
-
   }
 
 
@@ -258,31 +219,11 @@ export default class DrumMachine extends State {
         <div style="padding-left: 20px; padding-right: 20px">
           <h3>Target</h3>
 
-          <div style="position: relative">
+          <div style="margin-left: 20px; position: relative">
             ${this.targetDisplay.render()}
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 10px;
-              "
-              width="40";
-              text="*2"
-              @input="${e => this.changeSelectionLength("longer")}"
-            ></sc-button>
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 55px;
-              "
-              width="40";
-              text="/2"
-              @input="${e => this.changeSelectionLength("smaller")}"
-            ></sc-button>
           </div>
 
-          <div style="position: relative">
+          <div style="margin-left: 20px; position: relative">
             ${this.recorderDisplay.render()}
             <sc-record
               style="
@@ -390,12 +331,6 @@ export default class DrumMachine extends State {
           </div>
 
           <h3>Source</h3>
-
-          <sc-file-tree
-            value="${JSON.stringify(this.context.soundbankTreeRender)}";
-            @input="${e => this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
-          ></sc-file-tree>
-
           <div style="
             display: inline;
             margin: 20px;

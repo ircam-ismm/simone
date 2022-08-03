@@ -14,7 +14,7 @@ import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
 
-export default class SolarSystem extends State {
+export default class PerformanceState extends State {
   constructor(name, context) {
     super(name, context);
 
@@ -36,7 +36,7 @@ export default class SolarSystem extends State {
     this.nFramesBeat = 8;
 
     // Waveform display
-    this.waveformWidth = 600;
+    this.waveformWidth = 800;
     this.waveformHeight = 200;
 
     // this.mouseDownTargetA = this.mouseDownTargetA.bind(this);
@@ -71,13 +71,14 @@ export default class SolarSystem extends State {
 
     // Waveform display
     this.sourceDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, false, true);
-    this.targetDisplay = new WaveformDisplay(150, this.waveformWidth, true, true, false);
+    this.targetDisplay = new WaveformDisplay(150, this.waveformWidth, true, true, true);
     this.recorderDisplay = new WaveformDisplay(150, this.waveformWidth, false, false);
 
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.mosaicingSynth.setLoopLimits(start, end);
+      this.targetBufferSynth.setLoopLimits(start, end);
     });
 
 
@@ -95,19 +96,39 @@ export default class SolarSystem extends State {
     });
 
     // Synth
+    this.filter = new BiquadFilterNode(this.context.audioContext);
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 5000;
+
+    this.compressor = new DynamicsCompressorNode(this.context.audioContext);
+
+    this.bus = new GainNode(this.context.audioContext);
+
+    this.output = new GainNode(this.context.audioContext);
+
+    this.bus.connect(this.filter);
+    this.filter.connect(this.compressor);
+    this.compressor.connect(this.output);
+    this.output.connect(this.context.audioContext.destination);
+
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
     this.grainPeriod = this.hopSize / this.sourceSampleRate;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.connect(this.context.audioContext.destination);
+    this.mosaicingSynth.connect(this.bus);
 
     this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
       this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
     })
 
+    this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
+    this.targetBufferSynth.connect(this.bus);
+
+
+    
 
     const numbers = this.context.audioBufferLoader.data['french-numbers.wav'];
 
@@ -138,6 +159,7 @@ export default class SolarSystem extends State {
   setTargetFile(targetBuffer) {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
+      this.targetBufferSynth.buffer = targetBuffer;
       // const [mfccFrames, times] = this.computeMfcc(targetBuffer);
       // console.log(mfccFrames, targetBuffer);
       // this.mosaicingSynth.setModel(mfccFrames, targetBuffer.duration);
@@ -214,6 +236,23 @@ export default class SolarSystem extends State {
     }
   }
 
+  transportTargetFile(state) {
+    switch (state) {
+      case 'play':
+        this.targetBufferSynth.play(this.context.audioContext.currentTime);
+
+        this.targetBufferSynth.addEventListener('ended', () => {
+          const $transportTarget = document.querySelector('#transport-target');
+          $transportTarget.state = 'stop';
+        });
+
+        break;
+      case 'stop':
+        this.targetBufferSynth.stop(this.context.audioContext.currentTime);
+        break;
+    }
+  }
+
   transportRecordFile(state) {
     switch (state) {
       case 'play':
@@ -237,15 +276,15 @@ export default class SolarSystem extends State {
   transportMosaicing(state) {
     switch (state) {
       case 'play':
-        const beatLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
-        const currentSyncTime = this.context.sync.getSyncTime();
-        const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
-        const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => this.mosaicingSynth.start(), nextStartTimeLocal);
+        // const beatLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
+        // const currentSyncTime = this.context.sync.getSyncTime();
+        // const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
+        // const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
+        // this.scheduler.defer(() => this.mosaicingSynth.start(), nextStartTimeLocal);
 
-        console.log(beatLength, currentSyncTime, nextStartTime, nextStartTimeLocal);
+        // console.log(beatLength, currentSyncTime, nextStartTime, nextStartTimeLocal);
 
-
+        this.mosaicingSynth.start();
 
 
         // this.mosaicingSynth.setClearCallback(() => {
@@ -283,12 +322,224 @@ export default class SolarSystem extends State {
 
 
   render() {
+    const now = this.context.audioContext.currentTime;
     return html`
         <div style="padding: 20px">
           <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.client.id}]</h1>
         </div>
 
         <div style="padding-left: 20px; padding-right: 20px">
+          <h3>Target</h3>
+
+          <sc-file-tree
+            value="${JSON.stringify(this.context.soundbankTreeRender)}";
+            @input="${e => this.setTargetFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
+            height="150"
+          ></sc-file-tree>
+
+          <div style="position: relative">
+            ${this.targetDisplay.render()}
+            <sc-transport
+              id="transport-target"
+              style="
+                position: absolute;
+                bottom: 0;
+                left: 0;
+              "
+              buttons="[play, stop]"
+              @change="${e => this.transportTargetFile(e.detail.value)}"
+            ></sc-transport>
+            <sc-loop
+              style="
+                position: absolute;
+                bottom: 0;
+                left: 65px;
+              "
+                @change="${e => {
+                  this.mosaicingSynth.loop = e.detail.value;
+                  this.targetBufferSynth.loop = e.detail.value;
+                }}"
+            ></sc-loop>
+          </div>
+
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
+            <sc-record
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 10px;
+              "
+              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+            ></sc-record>
+            <sc-transport
+              id="transport-recorder"
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 45px;
+              "
+              buttons="[play, stop]"
+              @change="${e => this.transportRecordFile(e.detail.value)}"
+            ></sc-transport>
+            <sc-button
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 110px;
+              "
+              height="29";
+              width="140";
+              text="send to target"
+              @input="${e => this.setTargetFile(this.recordedBuffer)}"
+            ></sc-button>
+          </div>
+
+
+
+          <div style="margin: 20px; padding: 20px; position: relative">
+
+            <div>
+              <h3>start mosaicing</h3>
+              <sc-transport
+                style="display: block"
+                id="transport-mosaicing"
+                buttons="[play, stop]"
+                width="50"
+                @change="${e => this.transportMosaicing(e.detail.value)}"
+              ></sc-transport>
+            </div>
+
+            <div
+              style="
+                position: absolute;
+                top: 0;
+                left: 150px;
+              "
+            >
+              <h3>volume (target)</h3>
+              <sc-slider
+                min="0"
+                max="1"
+                value="0.5"
+                width="300"
+                display-number
+                @input="${e => this.targetBufferSynth.volume = e.detail.value}"
+              ></sc-slider>
+
+              <h3>volume (mosaicing)</h3>
+              <sc-slider
+                min="0"
+                max="1"
+                value="0.5"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
+              ></sc-slider>
+
+            </div>
+
+            <div
+              style="
+                position: absolute;
+                top: 0;
+                left: 480px;
+              "
+            >
+              <h3>detune (target)</h3>
+              <sc-slider
+                min="-24"
+                max="24"
+                value="0"
+                width="300"
+                display-number
+                @input="${e => this.targetBufferSynth.detune = e.detail.value * 100}"
+              ></sc-slider>
+
+              <h3>detune (mosaicing)</h3>
+              <sc-slider
+                min="-24"
+                max="24"
+                value="0"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
+              ></sc-slider>
+
+            </div>
+
+            <div
+              style="
+                position: absolute;
+                top: 0;
+                left: 810px;
+              "
+            >
+
+              <h3>grain period</h3>
+              <sc-slider
+                min="0.0058"
+                max="0.046"
+                value="0.0116"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
+              ></sc-slider>
+
+              <h3>grain duration</h3>
+              <sc-slider
+                min="0.02321995"
+                max="0.18575964"
+                value="0.0928"
+                width="300"
+                display-number
+                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
+              ></sc-slider>
+            </div>
+
+            <div
+              style="
+                position: absolute;
+                top: 0;
+                left: 1140px;
+              "
+            >
+
+              <h3>filter freq</h3>
+              <sc-slider
+                min="20"
+                max="5000"
+                value="5000"
+                width="300"
+                display-number
+                @input="${e => this.filter.frequency.setTargetAtTime(e.detail.value, now, 0.1)}"
+              ></sc-slider>
+
+              <h3>filter Q</h3>
+              <sc-slider
+                min="0.001"
+                max="30"
+                value="1"
+                width="300"
+                display-number
+                @input="${e => this.filter.Q.setTargetAtTime(e.detail.value, now, 0.1) }"
+              ></sc-slider>
+
+              <h3>global volume</h3>
+              <sc-slider
+                min="0"
+                max="1"
+                value="1"
+                width="300"
+                display-number
+                @input="${e => this.output.gain.setTargetAtTime(e.detail.value, now, 0.1) }"
+              ></sc-slider>
+            </div>
+
+          </div>
+
+
+
 
           <h3>Source</h3>
 
@@ -323,69 +574,8 @@ export default class SolarSystem extends State {
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
           </div>
-
-          <div style="margin: 20px; padding: 20px; position: relative">
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 0px;
-              "
-            >
-              <h3>volume</h3>
-              <sc-slider
-                min="0"
-                max="1"
-                value="0.5"
-                width="300"
-                display-number
-                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
-              ></sc-slider>
-
-              <h3>detune</h3>
-              <sc-slider
-                min="-24"
-                max="24"
-                width="300"
-                display-number
-                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
-              ></sc-slider>
-
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 330px;
-              "
-            >
-
-              <h3>grain period</h3>
-              <sc-slider
-                min="0.0058"
-                max="0.046"
-                value="0.0116"
-                width="300"
-                display-number
-                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
-              ></sc-slider>
-
-              <h3>grain duration</h3>
-              <sc-slider
-                min="0.02321995"
-                max="0.18575964"
-                value="0.0928"
-                width="300"
-                display-number
-                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
-              ></sc-slider>
-            </div>
-          </div>
-          
-
         </div>
+
       `
   }
 }

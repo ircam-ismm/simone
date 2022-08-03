@@ -5,6 +5,8 @@ import StateMachine from './states/StateMachine.js';
 import '@ircam/simple-components/sc-file-tree.js';
 import '@ircam/simple-components/sc-button.js';
 
+const hash = window.location.hash.replace(/^#/, '');
+
 
 class PlayerExperience extends AbstractExperience {
   constructor(client, config, $container, audioContext) {
@@ -16,12 +18,12 @@ class PlayerExperience extends AbstractExperience {
     this.audioContext = audioContext;
 
     // require plugins if needed
-
     this.platform = this.require('platform');
     this.sync = this.require('sync');
     this.filesystem = this.require('filesystem');
     this.audioBufferLoader = this.require('audio-buffer-loader');
-
+    this.checkin = this.require('checkin');
+    
     renderInitializationScreens(client, config, $container);
   }
 
@@ -29,12 +31,23 @@ class PlayerExperience extends AbstractExperience {
     super.start();
 
     this.global = await this.client.stateManager.attach('global');
+    this.checkinId = this.checkin.get('index');
 
     this.stateMachine = new StateMachine(this);
 
-    this.players = {};
+    // Players are named following the greek alphabet in lowercase
+    // except for the central player in the solar system configuration who is called Ω.
+    // You may access the Ω page using the "omega" hash in the url
 
     this.participant = await this.client.stateManager.create('participant');
+    if (hash === 'omega') {
+      this.participant.set({ name: 'Ω'});
+    } else {
+      const availableNames = this.global.get('availableNames');
+      const name = availableNames.shift();
+      this.global.set({ availableNames: availableNames});
+      this.participant.set({ name: name});
+    }
     this.participant.subscribe(async updates => {
       if ('state' in updates) {
         this.stateMachine.setState(updates.state);
@@ -42,28 +55,7 @@ class PlayerExperience extends AbstractExperience {
       this.render();
     });
 
-
-    this.client.stateManager.observe(async (schemaName, stateId, nodeId) => {
-      switch (schemaName) {
-        case 'participant':
-          const playerState = await this.client.stateManager.attach(schemaName, stateId);
-          playerState.subscribe(updates => {
-            if ('name' in updates) {
-              this.render();
-            }
-          })
-          playerState.onDetach(() => {
-            delete this.players[playerState.id];
-            this.render();
-          });
-          // this.players.add(playerState);
-          this.players[playerState.id] = playerState;
-          break;
-      }
-    });
-
-    //Audio file loading 
-
+    //Audio files loading 
     this.soundbankTreeRender = {
       "path": "soundbank",
       "name": "soundbank",
@@ -77,8 +69,7 @@ class PlayerExperience extends AbstractExperience {
     });
     await this.loadSoundbank();
 
-    // Microphone
-
+    // Microphone 
     try {
       this.micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseReduction: false, autoGainControl: false }, video: false });
       console.log(this.micStream);
@@ -100,16 +91,10 @@ class PlayerExperience extends AbstractExperience {
 
 
 
-    const SKIP_NAME = true;
-
-    if (SKIP_NAME) {
-      await this.participant.set({
-        name: 'user',
-        state: 'performance',//this.global.get('system'),
-      });
-    } else {
-      this.participant.set({ state: 'configure-name' });
-    }
+    // Proceed to the system set in the config
+    await this.participant.set({
+      state: 'clone'//this.global.get('system'),
+    });
 
 
     window.addEventListener('resize', () => this.render());
@@ -130,10 +115,29 @@ class PlayerExperience extends AbstractExperience {
           "name": leaf.name,
           "type": "file"
         });
+      } else if (leaf.name = 'userFiles') {
+        const userFilesTree = {
+          "path": leaf.url,
+          "name": leaf.name,
+          "children": [],
+          "type": "directory",
+        };
+        leaf.children.forEach(user_leafs => {
+          if (user_leafs.type === 'file') {
+            defObj[user_leafs.name] = user_leafs.url;
+            userFilesTree["children"].push({
+              "path": user_leafs.url,
+              "name": user_leafs.name,
+              "type": "file",
+            });
+          }
+        });
+        this.soundbankTreeRender["children"].push(userFilesTree);
       }
     });
     // load files and clear old cached buffers
     await this.audioBufferLoader.load(defObj, true);
+    console.log('new files loaded')
   }
   
 

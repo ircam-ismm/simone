@@ -13,11 +13,15 @@ export default {
     type: 'any',
     default: null,
     nullable: true,
-  },
-  meme: {
-    type: 'string',
-    default: null,
-    nullable :true,
     event: true,
+  },
+  cloneSourceTree: {
+    type: 'any',
+    default: null,
+    nullable: true,
+  },
+  mosaicingActive: {
+    type: 'boolean',
+    default: false,
   },
 };

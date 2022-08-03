@@ -121,8 +121,13 @@ class MosaicingSynth {
   // }
 
   setLoopLimits(startTime, endTime) {
-    this.startTime = startTime;
-    this.endTime = endTime;
+    if (endTime - startTime > 0) {
+      this.startTime = startTime;
+      this.endTime = endTime;
+    }
+    // this.startTime = startTime;
+    // this.endTime = endTime;
+    // console.log(this.startTime, this.endTime, this.endTime-this.startTime);
     // this.startIndex = this.timeToIndex(startTime);
     // this.endIndex = this.timeToIndex(endTime);
   }
@@ -167,7 +172,7 @@ class MosaicingSynth {
 
     //sending data/parsing target part
 
-    if (this.active) {
+    if (this.active && this.target) {
       // if (this.targetPlayerState) {
       //   this.targetPlayerState.set({ mosaicingData: this.model[this.index] })
       // } else {
@@ -175,15 +180,20 @@ class MosaicingSynth {
       // }
       // this.index += 1;
       const targetData = this.target.getChannelData(0);
-      const idx = Math.floor(this.transportTime*44100);
-      const length = this.grainDuration*44100;
+      const idx = Math.floor(this.transportTime*this.sampleRate);
+      const length = this.grainDuration*this.sampleRate;
       const grain = targetData.slice(idx, idx+length);
       const grainMfcc = this.mfcc.inputSignal(grain);
       for (let j = 0; j < 12; j++) {
         grainMfcc[j] = (grainMfcc[j] - this.means[j]) / this.std[j];
       }
-      this.nextData.push(grainMfcc);
+      if (this.targetPlayerState) {
+        this.targetPlayerState.set({ mosaicingData: grainMfcc });
+      } else {
+        this.nextData.push(grainMfcc);
+      }
     }
+
 
     // playing sound part
 
@@ -193,7 +203,6 @@ class MosaicingSynth {
     if (desc) {
       const target = this.kdTree.nn(desc);
       const timeOffset = this.times[target];
-
 
       time = Math.max(time, this.audioContext.currentTime);
 
@@ -211,9 +220,10 @@ class MosaicingSynth {
       source.start(time, timeOffset, this.grainDuration);
       source.stop(time + this.grainDuration);
 
-
-      this.advanceCallback(this.transportTime / this.target.duration, target / this.times.length);
-
+      if (this.advanceCallback) {
+        this.advanceCallback(this.transportTime / this.target.duration, target / this.times.length);
+      }
+      
     }
 
     // if (this.index <= this._endIndex && this.index >= this._startIndex) {
