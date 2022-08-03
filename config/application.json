@@ -11,4 +11,7 @@
       target: 'browser',
     },
   },
+
+  system: 'solar-system-dispatch',
+  nPlayers: 3,
 }

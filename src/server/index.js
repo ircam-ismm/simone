@@ -4,6 +4,8 @@ import { StateManagerOsc } from '@soundworks/state-manager-osc';
 import path from 'path';
 import serveStatic from 'serve-static';
 import compile from 'template-literal';
+import fileUpload from 'express-fileupload';
+import fs, { cp } from "fs";
 
 import PlayerExperience from './PlayerExperience.js';
 import ControllerExperience from './ControllerExperience.js';
@@ -12,8 +14,11 @@ import pluginPlatformFactory from '@soundworks/plugin-platform/server';
 import pluginSyncFactory from '@soundworks/plugin-sync/server';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/server';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/server';
+import pluginCheckinFactory from '@soundworks/plugin-checkin/server';
 
 import participantSchema from './schemas/participant.js';
+import globalSchema from './schemas/global.js';
+
 
 import getConfig from '../utils/getConfig.js';
 const ENV = process.env.ENV || 'default';
@@ -27,6 +32,24 @@ server.router.use(serveStatic('public'));
 server.router.use('build', serveStatic(path.join('.build', 'public')));
 server.router.use('vendors', serveStatic(path.join('.vendors', 'public')));
 server.router.use('soundbank', serveStatic('soundbank'));
+server.router.use(fileUpload());
+// const upload = multer();
+
+
+
+server.router.post('/upload-soundfile', (req, res) => {
+  console.log('POST /upload-soundfile');
+  const savePath = path.join('soundbank','userFiles', req.body.filename);
+  const file = Buffer.from(new Uint8Array(req.files.file.data));
+  fs.writeFile(savePath, file, (err) => {
+    if (err) {
+      console.log('Error: ', err);
+    } 
+  });
+});
+
+
+
 
 console.log(`
 --------------------------------------------------------
@@ -48,14 +71,20 @@ server.pluginManager.register('filesystem', pluginFilesystemFactory, {
     publicDirectory: 'soundbank',
   }],
 }, []);
-
+server.pluginManager.register('checkin', pluginCheckinFactory, {
+  capacity: config.app.nPlayers,
+}, []);
 server.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
+
+
 
 // -------------------------------------------------------------------
 // register schemas
 // -------------------------------------------------------------------
 // server.stateManager.registerSchema(name, schema);
 server.stateManager.registerSchema('participant', participantSchema);
+server.stateManager.registerSchema('global', globalSchema);
+
 
 (async function launch() {
   try {
@@ -65,6 +94,7 @@ server.stateManager.registerSchema('participant', participantSchema);
         app: {
           name: config.app.name,
           author: config.app.author,
+          system: config.app.system,
         },
         env: {
           type: config.env.type,
@@ -74,6 +104,37 @@ server.stateManager.registerSchema('participant', participantSchema);
       };
     });
 
+
+    const global = await server.stateManager.create('global', {
+      system: server.config.app.system,
+      nPlayers: server.config.app.nPlayers,
+    });
+
+    const players = new Set(); 
+
+    server.stateManager.observe(async (schemaName, stateId, nodeId) => {
+      switch (schemaName) {
+        case 'participant':
+          const playerState = await server.stateManager.attach(schemaName, stateId);
+
+          playerState.onDetach(() => {
+            // Once a player leaves, their name is put back in the pool
+            const name = playerState.get('name');
+            if (name !== 'Ω') {
+              const availableNames = global.get('availableNames');
+              availableNames.unshift(name);
+              global.set({ availableNames: availableNames });
+            }
+            // clean things
+            players.delete(playerState);
+          });
+          // store the player state into a list
+          players.add(playerState);
+          break;
+      }
+    });
+
+
     const playerExperience = new PlayerExperience(server, 'player');
     const controllerExperience = new ControllerExperience(server, 'controller');
 
@@ -82,15 +143,7 @@ server.stateManager.registerSchema('participant', participantSchema);
     playerExperience.start();
     controllerExperience.start();
 
-    const oscConfig = { // these are the defaults
-      localAddress: '0.0.0.0',
-      localPort: 57121,
-      remoteAddress: '127.0.0.1',
-      remotePort: 57122,
-    };
 
-    const oscStateManager = new StateManagerOsc(server.stateManager, oscConfig);
-    await oscStateManager.init();
 
   } catch (err) {
     console.error(err.stack);

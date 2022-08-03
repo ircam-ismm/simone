@@ -7,6 +7,7 @@ import pluginPlatformFactory from '@soundworks/plugin-platform/client';
 import pluginSyncFactory from '@soundworks/plugin-sync/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
+import pluginCheckinFactory from '@soundworks/plugin-checkin/client';
 
 import PlayerExperience from './PlayerExperience.js';
 
@@ -38,7 +39,10 @@ async function launch($container, index) {
       getTimeFunction: () => audioContext.currentTime,
     }, ['platform']);
     client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
-    client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
+    client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {
+      supportedExtensionRegExp: /\.(wav|mp3|ogg|json)$/i,
+    }, []);
+    client.pluginManager.register('checkin', pluginCheckinFactory, {}, []);
 
     // -------------------------------------------------------------------
     // launch application
