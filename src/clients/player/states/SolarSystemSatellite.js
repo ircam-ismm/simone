@@ -69,14 +69,16 @@ export default class SolarSystemSatellite extends State {
     this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-    //   this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // })
+    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    })
 
     this.context.participant.subscribe(updates => {
       if ('mosaicingActive' in updates) {
         this.playing = updates.mosaicingActive;
+      }
+      if ('sourceFilename' in updates) {
+        this.setSourceFile(this.context.audioBufferLoader.data[updates.sourceFilename]);
       }
     });
 

@@ -4,7 +4,6 @@ import { StateManagerOsc } from '@soundworks/state-manager-osc';
 import path from 'path';
 import serveStatic from 'serve-static';
 import compile from 'template-literal';
-import fileUpload from 'express-fileupload';
 import fs, { cp } from "fs";
 
 import PlayerExperience from './PlayerExperience.js';
@@ -32,23 +31,6 @@ server.router.use(serveStatic('public'));
 server.router.use('build', serveStatic(path.join('.build', 'public')));
 server.router.use('vendors', serveStatic(path.join('.vendors', 'public')));
 server.router.use('soundbank', serveStatic('soundbank'));
-server.router.use(fileUpload());
-// const upload = multer();
-
-
-
-server.router.post('/upload-soundfile', (req, res) => {
-  console.log('POST /upload-soundfile');
-  const savePath = path.join('soundbank','userFiles', req.body.filename);
-  const file = Buffer.from(new Uint8Array(req.files.file.data));
-  fs.writeFile(savePath, file, (err) => {
-    if (err) {
-      console.log('Error: ', err);
-    } 
-  });
-});
-
-
 
 
 console.log(`
@@ -65,11 +47,18 @@ console.log(`
 server.pluginManager.register('platform', pluginPlatformFactory, {}, []);
 server.pluginManager.register('sync', pluginSyncFactory, {}, []);
 server.pluginManager.register('filesystem', pluginFilesystemFactory, {
-  directories: [{
-    name: 'soundbank',
-    path: 'soundbank',
-    publicDirectory: 'soundbank',
-  }],
+  directories: [
+    {
+      name: 'soundbank',
+      path: path.join(process.cwd(), 'soundbank'),
+      publicDirectory: 'soundbank',
+    },
+    {
+      name: 'user-files',
+      path: path.join(process.cwd(), 'soundbank', 'user-files'),
+      publicDirectory: 'user-files',
+    },
+  ],
 }, []);
 server.pluginManager.register('checkin', pluginCheckinFactory, {
   capacity: config.app.nPlayers,
@@ -125,6 +114,13 @@ server.stateManager.registerSchema('global', globalSchema);
               availableNames.unshift(name);
               global.set({ availableNames: availableNames });
             }
+
+            // In clone mode only : one less player ready
+            const state = playerState.get('state');
+            if (state === 'clone-waiting' || state === 'clone-playing') {
+              const nPlayersReady = global.get('clonePlayersReady');
+              global.set({ clonePlayersReady: nPlayersReady - 1});
+            }
             // clean things
             players.delete(playerState);
           });
@@ -142,8 +138,6 @@ server.stateManager.registerSchema('global', globalSchema);
     await server.start();
     playerExperience.start();
     controllerExperience.start();
-
-
 
   } catch (err) {
     console.error(err.stack);

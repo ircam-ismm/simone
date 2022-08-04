@@ -93,7 +93,7 @@ class PlayerExperience extends AbstractExperience {
 
     // Proceed to the system set in the config
     await this.participant.set({
-      state: 'clone'//this.global.get('system'),
+      state: 'drum-machine'//this.global.get('system'),
     });
 
 
@@ -137,7 +137,6 @@ class PlayerExperience extends AbstractExperience {
     });
     // load files and clear old cached buffers
     await this.audioBufferLoader.load(defObj, true);
-    console.log('new files loaded')
   }
   
 

@@ -24,4 +24,9 @@ export default {
     type: 'boolean',
     default: false,
   },
+  sourceFilename: {
+    type: 'string',
+    default: null,
+    nullable: true,
+  }
 };

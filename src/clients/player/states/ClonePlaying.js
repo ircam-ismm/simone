@@ -113,6 +113,8 @@ export default class ClonePlaying extends State {
       this.mosaicingSynth.setTarget(targetBuffer);
       this.mosaicingSynth.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
+      this.targetDisplay.setSelectionStartTime(0);
+      this.targetDisplay.setSelectionLength(targetBuffer.duration);
     }
   }
 
