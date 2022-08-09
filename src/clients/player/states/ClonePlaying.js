@@ -89,14 +89,14 @@ export default class ClonePlaying extends State {
     this.synthEngine.connect(this.context.audioContext.destination);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
-    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-    //   this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // })
+    this.analyzerEngine.setAdvanceCallback(targetPosPct => {
+      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    });
+    this.synthEngine.setAdvanceCallback(sourcePosPct => {
+      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    });
 
     // Fetching recording to use as a source sound from the server
     const nPlayers = this.context.global.get('nPlayers');
@@ -123,6 +123,7 @@ export default class ClonePlaying extends State {
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
       this.targetDisplay.setSelectionLength(targetBuffer.duration);
+      this.analyzerEngine.start();
     }
   }
 

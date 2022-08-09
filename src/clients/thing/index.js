@@ -1,8 +1,20 @@
 import 'source-map-support/register.js';
 import { Client } from '@soundworks/core/client.js';
 import getConfig from '../../utils/getConfig.js';
+import { AudioContext } from 'node-web-audio-api';
+
+
+
+import pluginSyncFactory from '@soundworks/plugin-sync/client';
+import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
+// import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
+import pluginCheckinFactory from '@soundworks/plugin-checkin/client';
 
 import ThingExperience from './ThingExperience.js';
+
+
+const audioContext = new AudioContext();
+process.audioContext = audioContext;
 
 // emulate several bugs for testing purposes
 const ENV = process.env.ENV || 'default';
@@ -27,14 +39,21 @@ async function launch(index) {
     // -------------------------------------------------------------------
     // register plugins
     // -------------------------------------------------------------------
-
+    client.pluginManager.register('sync', pluginSyncFactory, {
+      getTimeFunction: () => audioContext.currentTime,
+    });
+    client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
+    // client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {
+    //   supportedExtensionRegExp: /\.(wav|mp3|ogg|json)$/i,
+    // }, []);
+    client.pluginManager.register('checkin', pluginCheckinFactory, {}, []);
     // -------------------------------------------------------------------
     // launch application
     // -------------------------------------------------------------------
     await client.init(config);
     initQoS(client);
 
-    const experience = new ThingExperience(client, config);
+    const experience = new ThingExperience(client, config, audioContext);
 
     // start all the things
     await client.start();

@@ -98,6 +98,12 @@ export default class DrumMachine extends State {
     // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
+    this.analyzerEngine.setAdvanceCallback(targetPosPct => {
+      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    });
+    this.synthEngine.setAdvanceCallback(sourcePosPct => {
+      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    });
     // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
       // this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
       // this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);

@@ -70,13 +70,11 @@ export default class SolarSystemSatellite extends State {
     this.synthEngine = new SynthEngine(this.context.audioContext, this.synthData, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
     this.synthEngine.connect(this.context.audioContext.destination);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
-    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // })
+    this.synthEngine.setAdvanceCallback(sourcePosPct => {
+      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    });
 
     this.context.participant.subscribe(updates => {
       if ('mosaicingActive' in updates) {

@@ -86,15 +86,11 @@ export default class SolarSystemOmega extends State {
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
-    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    // this.mosaicingSynth.targetPlayerState = this.context.participant;
-    
-    
     
     // Callback for displaying cursors
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      // this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-    // });
+    this.analyzerEngine.setAdvanceCallback(targetPosPct => {
+      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    });
 
     //Other players
     this.players = {};
@@ -104,6 +100,7 @@ export default class SolarSystemOmega extends State {
         case 'participant':
           const playerState = await this.context.client.stateManager.attach(schemaName, stateId);
           const playerName = playerState.get('name');
+          console.log(playerName);
           if (playerName !== 'Ω') {
             playerState.onDetach(() => {
               delete this.players[playerName];
@@ -125,10 +122,10 @@ export default class SolarSystemOmega extends State {
       this.analyzerEngine.setTarget(targetBuffer);
       this.analyzerEngine.setNorm(analysis[2], analysis[3]);
       // this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
-      this.analyzerEngine.start();
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
       this.targetDisplay.setSelectionLength(targetBuffer.duration);
+      this.analyzerEngine.start();
     }
   }
 

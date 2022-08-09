@@ -38,16 +38,19 @@ class PlayerExperience extends AbstractExperience {
     // Players are named following the greek alphabet in lowercase
     // except for the central player in the solar system configuration who is called Ω.
     // You may access the Ω page using the "omega" hash in the url
-
-    this.participant = await this.client.stateManager.create('participant');
+    let name;
     if (hash === 'omega') {
-      this.participant.set({ name: 'Ω'});
+      name = 'Ω';
     } else {
       const availableNames = this.global.get('availableNames');
-      const name = availableNames.shift();
-      this.global.set({ availableNames: availableNames});
-      this.participant.set({ name: name});
+      name = availableNames.shift();
+      this.global.set({ availableNames: availableNames });
     }
+
+    this.participant = await this.client.stateManager.create('participant', {
+      name: name,
+    });
+   
     this.participant.subscribe(async updates => {
       if ('state' in updates) {
         this.stateMachine.setState(updates.state);

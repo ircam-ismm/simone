@@ -103,7 +103,13 @@ class AnalyzerEngine {
       } else {
         this.dataDestination.push(grainMfcc);
       }
+
+      if (this.advanceCallback) {
+        this.advanceCallback(this.transportTime / this.target.duration);
+      }
     }
+
+    
 
 
     this.transportTime += this.grainPeriod;

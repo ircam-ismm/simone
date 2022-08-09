@@ -1,4 +1,6 @@
-class SynthEngine {
+import { AudioContext, GainNode, AudioBufferSourceNode} from 'node-web-audio-api';
+
+class SynthEngineNode {
   constructor(audioContext, dataArray, grainPeriod, grainDuration, sampleRate) {
     this.audioContext = audioContext;
     this.dataArray = dataArray;
@@ -78,14 +80,14 @@ class SynthEngine {
       const rand = Math.random() * this.jitter;
       const now = time + rand;
 
-      const env = this.audioContext.createGain();
+      const env = new GainNode(this.audioContext);
       env.connect(this.output);
       env.gain.value = 0;
       env.gain.setValueAtTime(0, now);
       env.gain.linearRampToValueAtTime(1, now + (this.grainDuration / 2));
       env.gain.linearRampToValueAtTime(0, now + this.grainDuration);
 
-      const source = this.audioContext.createBufferSource();
+      const source = new AudioBufferSourceNode(this.audioContext);
       source.connect(env);
       source.buffer = this.buffer;
       source.detune.value = this._detune;
@@ -102,4 +104,4 @@ class SynthEngine {
   }
 };
 
-export default SynthEngine;
+export default SynthEngineNode;
