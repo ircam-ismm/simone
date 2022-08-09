@@ -31,6 +31,7 @@ async function launch(index) {
     // -------------------------------------------------------------------
     // launch application
     // -------------------------------------------------------------------
+    console.log(config)
     await client.init(config);
     initQoS(client);
 
