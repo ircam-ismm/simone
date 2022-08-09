@@ -8,6 +8,7 @@ import fs, { cp } from "fs";
 
 import PlayerExperience from './PlayerExperience.js';
 import ControllerExperience from './ControllerExperience.js';
+import ThingExperience from './ThingExperience.js';
 
 import pluginPlatformFactory from '@soundworks/plugin-platform/server';
 import pluginSyncFactory from '@soundworks/plugin-sync/server';
@@ -133,11 +134,13 @@ server.stateManager.registerSchema('global', globalSchema);
 
     const playerExperience = new PlayerExperience(server, 'player');
     const controllerExperience = new ControllerExperience(server, 'controller');
+    const thingExperience = new ThingExperience(server, 'thing');
 
     // start all the things
     await server.start();
     playerExperience.start();
     controllerExperience.start();
+    thingExperience.start();
 
   } catch (err) {
     console.error(err.stack);
