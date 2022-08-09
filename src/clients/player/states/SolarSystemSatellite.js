@@ -7,7 +7,8 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
-import MosaicingSynth from '../MosaicingSynth';
+// import MosaicingSynth from '../MosaicingSynth';
+import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -63,15 +64,19 @@ export default class SolarSystemSatellite extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 0.1;
+    this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.connect(this.context.audioContext.destination);
+    this.synthData = []
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.synthData, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.synthEngine.connect(this.context.audioContext.destination);
+    this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
+    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
+    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    })
+    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    // })
 
     this.context.participant.subscribe(updates => {
       if ('mosaicingActive' in updates) {
@@ -94,7 +99,7 @@ export default class SolarSystemSatellite extends State {
                 if (this.playing) {
                   //this is received as an object
                   // console.log('receiving', updates.mosaicingSynth)
-                  this.mosaicingSynth.pushData(Object.values(updates.mosaicingData));
+                  this.synthData.push(Object.values(updates.mosaicingData));
                 }
               }
             });
@@ -112,8 +117,8 @@ export default class SolarSystemSatellite extends State {
       const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
-      this.mosaicingSynth.setBuffer(sourceBuffer);
-      this.mosaicingSynth.setSearchSpace(searchTree, times);
+      this.synthEngine.setBuffer(sourceBuffer);
+      this.synthEngine.setSearchSpace(searchTree, times);
       this.sourceDisplay.setBuffer(sourceBuffer);
     }
   }
@@ -240,7 +245,7 @@ export default class SolarSystemSatellite extends State {
                 value="0.5"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
+                @input="${e => this.synthEngine.volume = e.detail.value}"
               ></sc-slider>
 
               <h3>detune</h3>
@@ -250,7 +255,7 @@ export default class SolarSystemSatellite extends State {
                 value="0"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
+                @input="${e => this.synthEngine.detune = e.detail.value * 100}"
               ></sc-slider>
 
             </div>
@@ -262,17 +267,6 @@ export default class SolarSystemSatellite extends State {
                 left: 330px;
               "
             >
-
-              <h3>grain period</h3>
-              <sc-slider
-                min="0.01"
-                max="0.1"
-                value="0.05"
-                width="300"
-                display-number
-                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
-              ></sc-slider>
-
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02321995"
@@ -280,7 +274,7 @@ export default class SolarSystemSatellite extends State {
                 value="0.0928"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
+                @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
               ></sc-slider>
             </div>
           </div>

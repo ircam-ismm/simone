@@ -7,7 +7,9 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
-import MosaicingSynth from '../MosaicingSynth';
+// import MosaicingSynth from '../MosaicingSynth';
+import AnalyzerEngine from '../AnalyzerEngine';
+import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -59,7 +61,7 @@ export default class ClonePlaying extends State {
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
-      this.mosaicingSynth.setLoopLimits(start, end);
+      this.analyzerEngine.setLoopLimits(start, end);
     });
 
     // MFCC analyzer 
@@ -81,14 +83,20 @@ export default class ClonePlaying extends State {
 
     this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.connect(this.context.audioContext.destination);
+    this.sharedArray = [];
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.synthEngine.connect(this.context.audioContext.destination);
+    this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
+    this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
+    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
+    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    })
+    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+    //   this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    // })
 
     // Fetching recording to use as a source sound from the server
     const nPlayers = this.context.global.get('nPlayers');
@@ -99,8 +107,8 @@ export default class ClonePlaying extends State {
       const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
-      this.mosaicingSynth.setBuffer(sourceBuffer);
-      this.mosaicingSynth.setSearchSpace(searchTree, times);
+      this.synthEngine.setBuffer(sourceBuffer);
+      this.synthEngine.setSearchSpace(searchTree, times);
       this.sourceDisplay.setBuffer(sourceBuffer);
     }
   }
@@ -110,8 +118,8 @@ export default class ClonePlaying extends State {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
       const analysis = this.computeMfcc(targetBuffer);
-      this.mosaicingSynth.setTarget(targetBuffer);
-      this.mosaicingSynth.setNorm(analysis[2], analysis[3]); // values for normalization of data
+      this.analyzerEngine.setTarget(targetBuffer);
+      this.analyzerEngine.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
       this.targetDisplay.setSelectionLength(targetBuffer.duration);
@@ -203,10 +211,10 @@ export default class ClonePlaying extends State {
   transportMosaicing(state) {
     switch (state) {
       case 'play':
-        this.mosaicingSynth.start()
+        this.analyzerEngine.start()
         break;
       case 'stop':
-        this.mosaicingSynth.stop();
+        this.analyzerEngine.stop();
         break;
     }
   }
@@ -287,7 +295,7 @@ export default class ClonePlaying extends State {
                 value="0.5"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
+                @input="${e => this.synthEngine.volume = e.detail.value}"
               ></sc-slider>
 
               <h3>detune</h3>
@@ -297,7 +305,7 @@ export default class ClonePlaying extends State {
                 value="0"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
+                @input="${e => this.synthEngine.detune = e.detail.value * 100}"
               ></sc-slider>
 
             </div>
@@ -317,7 +325,10 @@ export default class ClonePlaying extends State {
                 value="0.05"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
+                @input="${e => {
+                  this.analyzerEngine.setGrainPeriod(e.detail.value);
+                  this.synthEngine.setGrainPeriod(e.detail.value);
+                }}"
               ></sc-slider>
 
               <h3>grain duration</h3>
@@ -327,7 +338,10 @@ export default class ClonePlaying extends State {
                 value="0.0928"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
+                @input="${e => {
+                  this.analyzerEngine.setGrainDuration(e.detail.value);
+                  this.synthEngine.setGrainDuration(e.detail.value);
+                }}"
               ></sc-slider>
             </div>
           </div>

@@ -6,7 +6,8 @@ import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
 import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformDisplay from '../WaveformDisplay';
-import MosaicingSynth from '../MosaicingSynth';
+// import MosaicingSynth from '../MosaicingSynth';
+import AnalyzerEngine from '../AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -56,7 +57,7 @@ export default class SolarSystemOmega extends State {
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
-      this.mosaicingSynth.setLoopLimits(start, end);
+      this.analyzerEngine.setLoopLimits(start, end);
     });
 
     // Analyzer 
@@ -81,16 +82,19 @@ export default class SolarSystemOmega extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 0.1;
+    this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.targetPlayerState = this.context.participant;
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
+    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
+    // this.mosaicingSynth.targetPlayerState = this.context.participant;
+    
+    
     
     // Callback for displaying cursors
-    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-    });
-
+    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+      // this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    // });
 
     //Other players
     this.players = {};
@@ -118,10 +122,10 @@ export default class SolarSystemOmega extends State {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
       const analysis = this.computeMfcc(targetBuffer);
-      this.mosaicingSynth.setTarget(targetBuffer);
-      this.mosaicingSynth.setNorm(analysis[2], analysis[3]);
+      this.analyzerEngine.setTarget(targetBuffer);
+      this.analyzerEngine.setNorm(analysis[2], analysis[3]);
       // this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
-      this.mosaicingSynth.start();
+      this.analyzerEngine.start();
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
       this.targetDisplay.setSelectionLength(targetBuffer.duration);

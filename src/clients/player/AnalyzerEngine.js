@@ -59,7 +59,6 @@ class AnalyzerEngine {
     grainDuration = grainDuration * this.sampleRate;
     grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
     this.grainDuration = grainDuration / this.sampleRate;
-    console.log(grainDuration);
     this.mfcc.initStream({
       frameSize: grainDuration,
       frameType: 'signal',

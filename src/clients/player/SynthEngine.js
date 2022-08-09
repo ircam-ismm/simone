@@ -43,9 +43,9 @@ class SynthEngine {
   }
 
   setGrainDuration(grainDuration) {
-    grainDuration = grainDuration * this.sampleRate;
-    grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
-    this.grainDuration = grainDuration / this.sampleRate;
+    // grainDuration = grainDuration * this.sampleRate;
+    // grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
+    this.grainDuration = grainDuration;
   }
 
   setGrainPeriod(grainPeriod) {
