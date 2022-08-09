@@ -6,7 +6,7 @@ class SynthEngine {
     this.grainDuration = grainDuration;
     this.sampleRate = sampleRate;
 
-    this.periodRand = 0.004;
+    this.jitter = 0.004;
 
     this._detune = 0;
     this.output = new GainNode(this.audioContext);
@@ -45,6 +45,7 @@ class SynthEngine {
   setGrainDuration(grainDuration) {
     grainDuration = grainDuration * this.sampleRate;
     grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
+    this.grainDuration = grainDuration / this.sampleRate;
   }
 
   setGrainPeriod(grainPeriod) {
@@ -66,29 +67,30 @@ class SynthEngine {
   }
 
   advanceTime(time) {
+    time = Math.max(time, this.audioContext.currentTime);
     // playing sound part
     // get closest grain index from kdTree
-    console.log(this.dataArray.length);
     const desc = this.dataArray.shift();
     if (desc) {
       const target = this.kdTree.nn(desc);
       const timeOffset = this.times[target];
 
-      time = Math.max(time, this.audioContext.currentTime);
+      const rand = Math.random() * this.jitter;
+      const now = time + rand;
 
       const env = this.audioContext.createGain();
       env.connect(this.output);
       env.gain.value = 0;
-      env.gain.setValueAtTime(0, time);
-      env.gain.linearRampToValueAtTime(1, time + (this.grainDuration / 2));
-      env.gain.linearRampToValueAtTime(0, time + this.grainDuration);
+      env.gain.setValueAtTime(0, now);
+      env.gain.linearRampToValueAtTime(1, now + (this.grainDuration / 2));
+      env.gain.linearRampToValueAtTime(0, now + this.grainDuration);
 
       const source = this.audioContext.createBufferSource();
       source.connect(env);
       source.buffer = this.buffer;
       source.detune.value = this._detune;
-      source.start(time, timeOffset, this.grainDuration);
-      source.stop(time + this.grainDuration);
+      source.start(now, timeOffset, this.grainDuration);
+      source.stop(now + this.grainDuration);
 
       // if (this.advanceCallback) {
       //   this.advanceCallback(this.transportTime / this.target.duration, target / this.times.length);
@@ -96,8 +98,7 @@ class SynthEngine {
       
     }
     
-    const rand = Math.random() * this.periodRand - (this.periodRand / 2);
-    return time + this.grainPeriod + rand;
+    return time + this.grainPeriod;
   }
 };
 

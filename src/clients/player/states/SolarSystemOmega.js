@@ -81,7 +81,7 @@ export default class SolarSystemOmega extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 2048 / this.sourceSampleRate;
+    this.grainPeriod = 0.1;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
     this.mosaicingSynth.targetPlayerState = this.context.participant;

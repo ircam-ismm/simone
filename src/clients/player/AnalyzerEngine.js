@@ -59,6 +59,7 @@ class AnalyzerEngine {
     grainDuration = grainDuration * this.sampleRate;
     grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
     this.grainDuration = grainDuration / this.sampleRate;
+    console.log(grainDuration);
     this.mfcc.initStream({
       frameSize: grainDuration,
       frameType: 'signal',
@@ -87,7 +88,7 @@ class AnalyzerEngine {
   }
 
   advanceTime(time) {
-
+    time = Math.max(time, this.audioContext.currentTime);
     //sending data/parsing target part
     if (this.active && this.target) {
       const targetData = this.target.getChannelData(0);
@@ -106,8 +107,7 @@ class AnalyzerEngine {
     }
 
 
-    const rand = Math.random() * this.periodRand - (this.periodRand / 2);
-    this.transportTime += this.grainPeriod + rand;
+    this.transportTime += this.grainPeriod;
     const loopDuration = this.endTime - this.startTime;
     if (this.transportTime < this.startTime) {
       while (this.transportTime < this.startTime) {
@@ -120,7 +120,7 @@ class AnalyzerEngine {
       }
     }
 
-    return time + this.grainPeriod + rand;
+    return time + this.grainPeriod;
   }
 };
 

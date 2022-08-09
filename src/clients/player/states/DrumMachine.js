@@ -10,6 +10,7 @@ import createKDTree from 'static-kdtree';
 import MosaicingSynth from '../MosaicingSynth';
 import AnalyzerEngine from '../AnalyzerEngine';
 import SynthEngine from '../SynthEngine';
+import loadSourceWorker from '../loadSourceWorker';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -86,7 +87,7 @@ export default class DrumMachine extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
-    this.grainPeriod = this.hopSize / this.sourceSampleRate;
+    this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.sharedArray = []; 
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
@@ -109,6 +110,31 @@ export default class DrumMachine extends State {
     console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
+      // const blobURL = window.URL.createObjectURL(loadSourceWorker);
+      // const worker = new Worker(blobURL, {type: "module"});
+      // worker.postMessage({
+      //   bufferData: sourceBuffer.getChannelData(0),
+      //   mfccParams: {
+      //     nbrBands: this.mfccBands,
+      //     nbrCoefs: this.mfccCoefs,
+      //     minFreq: this.mfccMinFreq,
+      //     maxFreq: this.mfccMaxFreq,
+      //   },
+      //   hopSize: this.hopSize,
+      //   mfccInit: {
+      //     frameSize: this.frameSize,
+      //     frameType: 'signal',
+      //     sourceSampleRate: this.sourceSampleRate,
+      //   },
+      // });
+      // worker.onmessage = e => {
+      //   console.log(e);
+      //   // this.synthEngine.setBuffer(sourceBuffer);
+      //   // this.synthEngine.setSearchSpace(e[0], e[1]);
+      //   // this.sourceDisplay.setBuffer(sourceBuffer);
+      //   // worker.terminate();
+      // };
+
       const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
@@ -376,9 +402,9 @@ export default class DrumMachine extends State {
 
               <h3>grain period</h3>
               <sc-slider
-                min="0.0058"
-                max="0.046"
-                value="0.0116"
+                min="0.01"
+                max="0.1"
+                value="0.05"
                 width="300"
                 display-number
                 @input="${e => {
@@ -390,7 +416,7 @@ export default class DrumMachine extends State {
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02321995"
-                max="0.19"
+                max="0.37"
                 value="0.0928"
                 width="300"
                 display-number

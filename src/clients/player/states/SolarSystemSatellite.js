@@ -63,7 +63,7 @@ export default class SolarSystemSatellite extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 2048 / this.sourceSampleRate;
+    this.grainPeriod = 0.1;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
     this.mosaicingSynth.connect(this.context.audioContext.destination);
@@ -265,9 +265,9 @@ export default class SolarSystemSatellite extends State {
 
               <h3>grain period</h3>
               <sc-slider
-                min="0.0058"
-                max="0.046"
-                value="0.046"
+                min="0.01"
+                max="0.1"
+                value="0.05"
                 width="300"
                 display-number
                 @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
@@ -276,7 +276,7 @@ export default class SolarSystemSatellite extends State {
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02321995"
-                max="0.18575964"
+                max="0.37"
                 value="0.0928"
                 width="300"
                 display-number
