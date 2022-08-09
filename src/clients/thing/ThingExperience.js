@@ -6,7 +6,6 @@ class ThingExperience extends AbstractExperience {
     super(client);
 
     this.config = config;
-    console.log('stuff')
     // require plugins if needed
   }
 
