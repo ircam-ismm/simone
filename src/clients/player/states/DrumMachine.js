@@ -8,6 +8,9 @@ import Mfcc from 'waves-lfo/common/operator/Mfcc';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
 import MosaicingSynth from '../MosaicingSynth';
+import AnalyzerEngine from '../AnalyzerEngine';
+import SynthEngine from '../SynthEngine';
+import loadSourceWorker from '../loadSourceWorker';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -51,7 +54,6 @@ export default class DrumMachine extends State {
 
     this.context.fileReader.addEventListener('loadend', async () => {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
-      // const [mfccFrames, times] = this.computeMfcc(audioBuffer);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
     });
@@ -65,7 +67,7 @@ export default class DrumMachine extends State {
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
-      this.mosaicingSynth.setLoopLimits(start, end);
+      this.analyzerEngine.setLoopLimits(start, end);
     });
 
     // MFCC analyzer 
@@ -85,16 +87,22 @@ export default class DrumMachine extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
-    this.grainPeriod = this.hopSize / this.sourceSampleRate;
+    this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
-    this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
-    this.mosaicingSynth.connect(this.context.audioContext.destination);
+    this.sharedArray = []; 
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.synthEngine.connect(this.context.audioContext.destination);
+    this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
+    this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
+    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
+    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
-    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-      this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    });
+    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+      // this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+      // this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
+    // });
 
   }
 
@@ -102,11 +110,36 @@ export default class DrumMachine extends State {
     console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
+      // const blobURL = window.URL.createObjectURL(loadSourceWorker);
+      // const worker = new Worker(blobURL, {type: "module"});
+      // worker.postMessage({
+      //   bufferData: sourceBuffer.getChannelData(0),
+      //   mfccParams: {
+      //     nbrBands: this.mfccBands,
+      //     nbrCoefs: this.mfccCoefs,
+      //     minFreq: this.mfccMinFreq,
+      //     maxFreq: this.mfccMaxFreq,
+      //   },
+      //   hopSize: this.hopSize,
+      //   mfccInit: {
+      //     frameSize: this.frameSize,
+      //     frameType: 'signal',
+      //     sourceSampleRate: this.sourceSampleRate,
+      //   },
+      // });
+      // worker.onmessage = e => {
+      //   console.log(e);
+      //   // this.synthEngine.setBuffer(sourceBuffer);
+      //   // this.synthEngine.setSearchSpace(e[0], e[1]);
+      //   // this.sourceDisplay.setBuffer(sourceBuffer);
+      //   // worker.terminate();
+      // };
+
       const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
-      this.mosaicingSynth.setBuffer(sourceBuffer);
-      this.mosaicingSynth.setSearchSpace(searchTree, times);
+      this.synthEngine.setBuffer(sourceBuffer);
+      this.synthEngine.setSearchSpace(searchTree, times);
       this.sourceDisplay.setBuffer(sourceBuffer);
     }
   }
@@ -115,8 +148,8 @@ export default class DrumMachine extends State {
     this.currentTarget = targetBuffer;
     if (targetBuffer) {
       const analysis = this.computeMfcc(targetBuffer);
-      this.mosaicingSynth.setTarget(targetBuffer);
-      this.mosaicingSynth.setNorm(analysis[2], analysis[3]); // values for normalization of data
+      this.analyzerEngine.setTarget(targetBuffer);
+      this.analyzerEngine.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
       // setting looping section back to 0
       this.targetDisplay.setSelectionStartTime(0);
@@ -218,10 +251,10 @@ export default class DrumMachine extends State {
         const currentSyncTime = this.context.sync.getSyncTime();
         const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
         const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => this.mosaicingSynth.start(), nextStartTimeLocal);
+        this.scheduler.defer(() => this.analyzerEngine.start(), nextStartTimeLocal);
         break;
       case 'stop':
-        this.mosaicingSynth.stop();
+        this.analyzerEngine.stop();
         break;
     }
   }
@@ -344,7 +377,7 @@ export default class DrumMachine extends State {
                 value="0.5"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.volume = e.detail.value}"
+                @input="${e => this.synthEngine.volume = e.detail.value}"
               ></sc-slider>
 
               <h3>detune</h3>
@@ -354,7 +387,7 @@ export default class DrumMachine extends State {
                 value="0"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.detune = e.detail.value * 100}"
+                @input="${e => this.synthEngine.detune = e.detail.value * 100}"
               ></sc-slider>
 
             </div>
@@ -369,22 +402,28 @@ export default class DrumMachine extends State {
 
               <h3>grain period</h3>
               <sc-slider
-                min="0.0058"
-                max="0.046"
-                value="0.0116"
+                min="0.01"
+                max="0.1"
+                value="0.05"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
+                @input="${e => {
+                  this.analyzerEngine.setGrainPeriod(e.detail.value);
+                  this.synthEngine.setGrainPeriod(e.detail.value);
+                }}"
               ></sc-slider>
 
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02321995"
-                max="0.18575964"
+                max="0.37"
                 value="0.0928"
                 width="300"
                 display-number
-                @input="${e => this.mosaicingSynth.setGrainDuration(e.detail.value)}"
+                @input="${e => {
+                  this.analyzerEngine.setGrainDuration(e.detail.value);
+                  this.synthEngine.setGrainDuration(e.detail.value);
+                }}"
               ></sc-slider>
             </div>
           </div>

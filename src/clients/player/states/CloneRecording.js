@@ -51,16 +51,11 @@ export default class CloneRecording extends State {
 
   async uploadRecordedFile() {
     if (this.currentRecording) {
-      console.log(this.currentRecording);
       // upload to server
-      const form = new FormData();
-      form.append('file', this.currentRecording);
-      form.append('filename', `recording-player-${this.context.checkinId}.ogg`);
-
-      fetch('/upload-soundfile', {
-        method: 'POST',
-        body: form
-      });
+      const filename = `recording-player-${this.context.checkinId}.ogg`;
+      const file = [];
+      file[filename] = this.currentRecording;
+      this.context.filesystem.upload('user-files', file);
 
       // updates number of players ready and proceed to waiting state
       const nPlayersReady = this.context.global.get('clonePlayersReady');

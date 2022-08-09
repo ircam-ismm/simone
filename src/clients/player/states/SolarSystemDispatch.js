@@ -14,7 +14,7 @@ export default class SolarSystemDispatch extends State {
       });
     } else {
       this.context.participant.set({
-        state: 'solar-system',
+        state: 'solar-system-satellite',
       });
     }
   }

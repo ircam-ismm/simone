@@ -81,16 +81,15 @@ export default class SolarSystemOmega extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 2048 / this.sourceSampleRate;
+    this.grainPeriod = 0.1;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
     this.mosaicingSynth.targetPlayerState = this.context.participant;
     
     // Callback for displaying cursors
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-    //   this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-    //   this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // });
+    this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
+      this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
+    });
 
 
     //Other players
@@ -121,9 +120,11 @@ export default class SolarSystemOmega extends State {
       const analysis = this.computeMfcc(targetBuffer);
       this.mosaicingSynth.setTarget(targetBuffer);
       this.mosaicingSynth.setNorm(analysis[2], analysis[3]);
-      this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
+      // this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
       this.mosaicingSynth.start();
       this.targetDisplay.setBuffer(targetBuffer);
+      this.targetDisplay.setSelectionStartTime(0);
+      this.targetDisplay.setSelectionLength(targetBuffer.duration);
     }
   }
 
@@ -250,10 +251,14 @@ export default class SolarSystemOmega extends State {
             <div>
               ${Object.entries(this.players).map(([name, state]) => {
                 return html`
-                  <div style="display: flex; justify-content: space-around; margin-bottom: 20px">
-                    <h2 style="
-                      "
-                    >
+                  <div style="
+                      display: flex;
+                      justify-content: space-around;
+                      align-items: center;
+                      margin-bottom: 20px;
+                    "
+                  >
+                    <h2>
                       ${name}
                     </h2>
 
@@ -265,6 +270,25 @@ export default class SolarSystemOmega extends State {
                         : state.set({ mosaicingActive: false })
                       }"
                     ></sc-transport>
+
+                    <select 
+                      style="
+                        width: 200px;
+                        height: 30px
+                      "
+                      @change="${e => {
+                        if (e.target.value !== "") {
+                          state.set({ sourceFilename: e.target.value })
+                        }
+                      }}"  
+                    >
+                      <option value="">select a source file</option>
+                      ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
+                        return html`
+                          <option value="${filename}">${filename}</option>
+                        `
+                      })}
+                    </select>
                   </div>
                 `;
               })}

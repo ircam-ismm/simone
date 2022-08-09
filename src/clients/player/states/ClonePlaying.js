@@ -79,7 +79,7 @@ export default class ClonePlaying extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
-    this.grainPeriod = this.hopSize / this.sourceSampleRate;
+    this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sourceSampleRate;
     this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sourceSampleRate);
     this.mosaicingSynth.connect(this.context.audioContext.destination);
@@ -113,6 +113,8 @@ export default class ClonePlaying extends State {
       this.mosaicingSynth.setTarget(targetBuffer);
       this.mosaicingSynth.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
+      this.targetDisplay.setSelectionStartTime(0);
+      this.targetDisplay.setSelectionLength(targetBuffer.duration);
     }
   }
 
@@ -310,9 +312,9 @@ export default class ClonePlaying extends State {
 
               <h3>grain period</h3>
               <sc-slider
-                min="0.0058"
-                max="0.046"
-                value="0.0116"
+                min="0.01"
+                max="0.1"
+                value="0.05"
                 width="300"
                 display-number
                 @input="${e => this.mosaicingSynth.setGrainPeriod(e.detail.value)}"
@@ -321,7 +323,7 @@ export default class ClonePlaying extends State {
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02321995"
-                max="0.18575964"
+                max="0.37"
                 value="0.0928"
                 width="300"
                 display-number

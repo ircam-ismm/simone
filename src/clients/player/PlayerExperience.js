@@ -137,7 +137,6 @@ class PlayerExperience extends AbstractExperience {
     });
     // load files and clear old cached buffers
     await this.audioBufferLoader.load(defObj, true);
-    console.log('new files loaded')
   }
   
 
