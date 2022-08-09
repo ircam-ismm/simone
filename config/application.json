@@ -10,6 +10,9 @@
     controller: {
       target: 'browser',
     },
+    thing: {
+      target: 'node',
+    },
   },
 
   system: 'solar-system-dispatch',
