@@ -4,7 +4,7 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
-import Mfcc from 'waves-lfo/common/operator/Mfcc';
+import Mfcc from '..//Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
 // import MosaicingSynth from '../MosaicingSynth';
@@ -24,7 +24,7 @@ export default class ClonePlaying extends State {
     // Parameters for audio analysis
     this.frameSize = 4096;
     this.hopSize = 512;
-    this.sourceSampleRate = this.context.audioContext.sampleRate;
+    this.sampleRate = this.context.audioContext.sampleRate;
     this.mfccBands = 24;
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
@@ -65,27 +65,17 @@ export default class ClonePlaying extends State {
     });
 
     // MFCC analyzer 
-    this.mfcc = new Mfcc({
-      nbrBands: this.mfccBands,
-      nbrCoefs: this.mfccCoefs,
-      minFreq: this.mfccMinFreq,
-      maxFreq: this.mfccMaxFreq,
-    });
-    this.mfcc.initStream({
-      frameSize: this.frameSize,
-      frameType: 'signal',
-      sourceSampleRate: this.sourceSampleRate,
-    });
+    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
 
     // Mosaicing synth
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
     this.grainPeriod = 0.05;
-    this.grainDuration = this.frameSize / this.sourceSampleRate;
+    this.grainDuration = this.frameSize / this.sampleRate;
     this.sharedArray = [];
-    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
-    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sourceSampleRate);
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
     this.synthEngine.connect(this.context.audioContext.destination);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
@@ -104,7 +94,7 @@ export default class ClonePlaying extends State {
     const sourceBuffer = this.context.audioBufferLoader.data[`recording-player-${idSourceToGet}.ogg`];
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
-      const [mfccFrames, times] = this.computeMfcc(sourceBuffer);
+      const [mfccFrames, times] = this.mfcc.computeBufferMfcc(sourceBuffer, this.hopSize);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
       this.synthEngine.setBuffer(sourceBuffer);
@@ -117,56 +107,14 @@ export default class ClonePlaying extends State {
   setTargetFile(targetBuffer) {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
-      const analysis = this.computeMfcc(targetBuffer);
+      const analysis = this.mfcc.computeBufferMfcc(targetBuffer, this.hopSize);
       this.analyzerEngine.setTarget(targetBuffer);
       this.analyzerEngine.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
       this.targetDisplay.setSelectionLength(targetBuffer.duration);
-      this.analyzerEngine.start();
+      // this.analyzerEngine.start();
     }
-  }
-
-  computeMfcc(buffer) { // make aynchronous ?
-    console.log("analysing file");
-    const mfccFrames = [];
-    const times = [];
-    const means = new Float32Array(this.mfccCoefs);
-    const std = new Float32Array(this.mfccCoefs);
-    const channelData = buffer.getChannelData(0);
-
-    for (let i = 0; i < buffer.length; i += this.hopSize) {
-      const frame = channelData.subarray(i, i + this.frameSize);
-      times.push(i / this.sourceSampleRate);
-      const cepsFrame = this.mfcc.inputSignal(frame);
-      mfccFrames.push(Array.from(cepsFrame));
-      for (let j = 0; j < this.mfccCoefs; j++) {
-        means[j] += cepsFrame[j];
-      }
-    }
-    // get means and std
-    for (let j = 0; j < this.mfccCoefs; j++) {
-      means[j] /= mfccFrames.length;
-    }
-    for (let i = 0; i < mfccFrames.length; i++) {
-      const cepsFrame = mfccFrames[i];
-      for (let j = 0; j < this.mfccCoefs; j++) {
-        std[j] += (cepsFrame[j] - means[j]) ** 2
-      }
-    }
-    for (let j = 0; j < this.mfccCoefs; j++) {
-      std[j] /= mfccFrames.length;
-      std[j] = Math.sqrt(std[j]);
-    }
-
-    // normalize
-    for (let i = 0; i < mfccFrames.length; i++) {
-      for (let j = 0; j < this.mfccCoefs; j++) {
-        mfccFrames[i][j] = (mfccFrames[i][j] - means[j]) / std[j];
-      }
-    }
-    console.log('analysis done');
-    return [mfccFrames, times, means, std];
   }
 
   transportSourceFile(state) {
@@ -327,7 +275,7 @@ export default class ClonePlaying extends State {
                 width="300"
                 display-number
                 @input="${e => {
-                  this.analyzerEngine.setGrainPeriod(e.detail.value);
+                  this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
                 }}"
               ></sc-slider>
@@ -340,7 +288,6 @@ export default class ClonePlaying extends State {
                 width="300"
                 display-number
                 @input="${e => {
-                  this.analyzerEngine.setGrainDuration(e.detail.value);
                   this.synthEngine.setGrainDuration(e.detail.value);
                 }}"
               ></sc-slider>

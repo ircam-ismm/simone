@@ -1,10 +1,8 @@
 import 'source-map-support/register';
 import { Server } from '@soundworks/core/server';
-import { StateManagerOsc } from '@soundworks/state-manager-osc';
 import path from 'path';
 import serveStatic from 'serve-static';
 import compile from 'template-literal';
-import fs, { cp } from "fs";
 
 import PlayerExperience from './PlayerExperience.js';
 import ControllerExperience from './ControllerExperience.js';

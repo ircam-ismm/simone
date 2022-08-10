@@ -1,4 +1,4 @@
-import Mfcc from 'waves-lfo/common/operator/Mfcc';
+import Mfcc from './Mfcc.js';
 
 class MosaicingSynth {
   constructor(audioContext, grainPeriod, grainDuration, scheduler, sampleRate) {
@@ -13,18 +13,7 @@ class MosaicingSynth {
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
 
-    this.mfcc = new Mfcc({
-      nbrBands: this.mfccBands,
-      nbrCoefs: this.mfccCoefs,
-      minFreq: this.mfccMinFreq,
-      maxFreq: this.mfccMaxFreq,
-    });
-
-    this.mfcc.initStream({
-      frameSize: grainDuration * sampleRate,
-      frameType: 'signal',
-      sourceSampleRate: this.sampleRate,
-    });
+    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sourceSampleRate);
 
     this.active = false // whether or not data is sent out
 
@@ -183,7 +172,7 @@ class MosaicingSynth {
       const idx = Math.floor(this.transportTime*this.sampleRate);
       const length = this.grainDuration*this.sampleRate;
       const grain = targetData.slice(idx, idx+length);
-      const grainMfcc = this.mfcc.inputSignal(grain);
+      const grainMfcc = this.mfcc.get(grain);
       for (let j = 0; j < 12; j++) {
         grainMfcc[j] = (grainMfcc[j] - this.means[j]) / this.std[j];
       }

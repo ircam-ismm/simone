@@ -16,5 +16,5 @@
   },
 
   system: 'solar-system-dispatch',
-  nPlayers: 3,
+  nPlayers: 1,
 }

@@ -96,7 +96,7 @@ class PlayerExperience extends AbstractExperience {
 
     // Proceed to the system set in the config
     await this.participant.set({
-      state: 'solar-system'//this.global.get('system'),
+      state: 'clone'//this.global.get('system'),
     });
 
 

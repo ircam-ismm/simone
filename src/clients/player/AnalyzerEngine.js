@@ -1,14 +1,14 @@
-import Mfcc from 'waves-lfo/common/operator/Mfcc';
+import Mfcc from './Mfcc.js';
 
 class AnalyzerEngine {
-  constructor(audioContext, dataDestination, grainPeriod, grainDuration, sampleRate) {
+  constructor(audioContext, dataDestination, period, frameSize, sampleRate) {
     this.audioContext = audioContext;
     // where analyzed data will be sent. Either an array (in local mode) 
     // or a shared state (in remote mode)
     this.dataDestination = dataDestination;
     this.mode = Array.isArray(dataDestination) ? 'local' : 'remote';
-    this.grainPeriod = grainPeriod;
-    this.grainDuration = grainDuration;
+    this.period = period;
+    this.frameSize = Math.pow(2, Math.round(Math.log2(frameSize))); // clamp to nearest power of 2
     this.sampleRate = sampleRate;
 
     this.mfccBands = 24;
@@ -16,18 +16,7 @@ class AnalyzerEngine {
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
 
-    this.mfcc = new Mfcc({
-      nbrBands: this.mfccBands,
-      nbrCoefs: this.mfccCoefs,
-      minFreq: this.mfccMinFreq,
-      maxFreq: this.mfccMaxFreq,
-    });
-
-    this.mfcc.initStream({
-      frameSize: grainDuration * sampleRate,
-      frameType: 'signal',
-      sourceSampleRate: this.sampleRate,
-    });
+    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
 
     this.active = false // whether or not data is sent out
 
@@ -55,19 +44,8 @@ class AnalyzerEngine {
     this.clearCallback = callback;
   }
 
-  setGrainDuration(grainDuration) {
-    grainDuration = grainDuration * this.sampleRate;
-    grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
-    this.grainDuration = grainDuration / this.sampleRate;
-    this.mfcc.initStream({
-      frameSize: grainDuration,
-      frameType: 'signal',
-      sourceSampleRate: this.sampleRate,
-    });
-  }
-
-  setGrainPeriod(grainPeriod) {
-    this.grainPeriod = grainPeriod;
+  setPeriod(period) {
+    this.period = period;
   }
 
   setLoopLimits(startTime, endTime) {
@@ -92,9 +70,9 @@ class AnalyzerEngine {
     if (this.active && this.target) {
       const targetData = this.target.getChannelData(0);
       const idx = Math.floor(this.transportTime*this.sampleRate);
-      const length = this.grainDuration*this.sampleRate;
+      const length = this.frameSize*this.sampleRate;
       const grain = targetData.slice(idx, idx+length);
-      const grainMfcc = this.mfcc.inputSignal(grain);
+      const grainMfcc = this.mfcc.get(grain);
       for (let j = 0; j < 12; j++) {
         grainMfcc[j] = (grainMfcc[j] - this.means[j]) / this.std[j];
       }
@@ -112,7 +90,7 @@ class AnalyzerEngine {
     
 
 
-    this.transportTime += this.grainPeriod;
+    this.transportTime += this.period;
     const loopDuration = this.endTime - this.startTime;
     if (this.transportTime < this.startTime) {
       while (this.transportTime < this.startTime) {
@@ -125,7 +103,7 @@ class AnalyzerEngine {
       }
     }
 
-    return time + this.grainPeriod;
+    return time + this.period;
   }
 };
 
