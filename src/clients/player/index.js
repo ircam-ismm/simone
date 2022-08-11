@@ -8,6 +8,7 @@ import pluginSyncFactory from '@soundworks/plugin-sync/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
 import pluginCheckinFactory from '@soundworks/plugin-checkin/client';
+import pluginLoggerFactory from '@soundworks/plugin-logger/client';
 
 import PlayerExperience from './PlayerExperience.js';
 
@@ -43,6 +44,7 @@ async function launch($container, index) {
       supportedExtensionRegExp: /\.(wav|mp3|ogg|json)$/i,
     }, []);
     client.pluginManager.register('checkin', pluginCheckinFactory, {}, []);
+    client.pluginManager.register('logger', pluginLoggerFactory, {}, []);
 
     // -------------------------------------------------------------------
     // launch application

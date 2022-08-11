@@ -13,6 +13,7 @@ import pluginSyncFactory from '@soundworks/plugin-sync/server';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/server';
 import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/server';
 import pluginCheckinFactory from '@soundworks/plugin-checkin/server';
+import pluginLoggerFactory from '@soundworks/plugin-logger/server';
 
 import participantSchema from './schemas/participant.js';
 import globalSchema from './schemas/global.js';
@@ -63,7 +64,9 @@ server.pluginManager.register('checkin', pluginCheckinFactory, {
   capacity: config.app.nPlayers,
 }, []);
 server.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
-
+server.pluginManager.register('logger', pluginLoggerFactory, {
+  directory: 'logs',
+}, []);
 
 
 // -------------------------------------------------------------------

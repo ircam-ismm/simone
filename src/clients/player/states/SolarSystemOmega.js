@@ -6,7 +6,6 @@ import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
 import Mfcc from '../Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
-// import MosaicingSynth from '../MosaicingSynth';
 import AnalyzerEngine from '../AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
@@ -47,6 +46,8 @@ export default class SolarSystemOmega extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     // Waveform display
@@ -58,6 +59,8 @@ export default class SolarSystemOmega extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // Analyzer 
@@ -89,7 +92,6 @@ export default class SolarSystemOmega extends State {
         case 'participant':
           const playerState = await this.context.client.stateManager.attach(schemaName, stateId);
           const playerName = playerState.get('name');
-          console.log(playerName);
           if (playerName !== 'Ω') {
             playerState.onDetach(() => {
               delete this.players[playerName];
@@ -181,7 +183,11 @@ export default class SolarSystemOmega extends State {
               height="29";
               width="140";
               text="send to target"
-              @input="${e => this.setTargetFile(this.recordedBuffer)}"
+              @input="${e => {
+                this.setTargetFile(this.recordedBuffer);
+                const now = Date.now();
+                this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
+              }}"
             ></sc-button>
           </div>
 
@@ -212,10 +218,17 @@ export default class SolarSystemOmega extends State {
                     <sc-transport
                       buttons="[play, stop]"
                       width="50"
-                      @change="${e => e.detail.value === 'play' 
-                        ? state.set({ mosaicingActive: true })
-                        : state.set({ mosaicingActive: false })
-                      }"
+                      @change="${e => {
+                        if (e.detail.value === 'play') {
+                          state.set({ mosaicingActive: true });
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
+                        } else {
+                          state.set({ mosaicingActive: false });
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
+                        }
+                      }}"
                     ></sc-transport>
 
                     <select 
@@ -225,7 +238,9 @@ export default class SolarSystemOmega extends State {
                       "
                       @change="${e => {
                         if (e.target.value !== "") {
-                          state.set({ sourceFilename: e.target.value })
+                          state.set({ sourceFilename: e.target.value });
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
                         }
                       }}"  
                     >

@@ -7,7 +7,6 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from '../Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
-// import MosaicingSynth from '../MosaicingSynth';
 import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
@@ -145,7 +144,11 @@ export default class SolarSystemSatellite extends State {
 
           <sc-file-tree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
-            @input="${e => this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
+            @input="${e => {
+              this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+              const now = Date.now();
+              this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
+            }}"
           ></sc-file-tree>
 
           <div style="
@@ -202,6 +205,10 @@ export default class SolarSystemSatellite extends State {
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.detune = e.detail.value * 100}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
+                }}"
               ></sc-slider>
 
             </div>
@@ -221,6 +228,10 @@ export default class SolarSystemSatellite extends State {
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
+                }}"
               ></sc-slider>
             </div>
           </div>

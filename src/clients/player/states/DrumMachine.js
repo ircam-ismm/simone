@@ -7,7 +7,6 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from '../Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
-// import MosaicingSynth from '../MosaicingSynth';
 import AnalyzerEngine from '../AnalyzerEngine';
 import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
@@ -53,6 +52,8 @@ export default class DrumMachine extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     // Waveforms display
@@ -65,6 +66,8 @@ export default class DrumMachine extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer 
@@ -82,8 +85,6 @@ export default class DrumMachine extends State {
     this.synthEngine.connect(this.context.audioContext.destination);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
-    // this.mosaicingSynth = new MosaicingSynth(this.context.audioContext, this.grainPeriod, this.grainDuration, this.scheduler, this.sampleRate);
-    // this.mosaicingSynth.connect(this.context.audioContext.destination);
 
     // Callback for displaying cursors
     this.analyzerEngine.setAdvanceCallback(targetPosPct => {
@@ -92,10 +93,6 @@ export default class DrumMachine extends State {
     this.synthEngine.setAdvanceCallback(sourcePosPct => {
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
     });
-    // this.mosaicingSynth.setAdvanceCallback((targetPosPct, sourcePosPct) => {
-      // this.targetDisplay.setCursorTime(this.currentTarget.duration * targetPosPct);
-      // this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
-    // });
 
   }
 
@@ -103,31 +100,6 @@ export default class DrumMachine extends State {
     console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
-      // const blobURL = window.URL.createObjectURL(loadSourceWorker);
-      // const worker = new Worker(blobURL, {type: "module"});
-      // worker.postMessage({
-      //   bufferData: sourceBuffer.getChannelData(0),
-      //   mfccParams: {
-      //     nbrBands: this.mfccBands,
-      //     nbrCoefs: this.mfccCoefs,
-      //     minFreq: this.mfccMinFreq,
-      //     maxFreq: this.mfccMaxFreq,
-      //   },
-      //   hopSize: this.hopSize,
-      //   mfccInit: {
-      //     frameSize: this.frameSize,
-      //     frameType: 'signal',
-      //     sampleRate: this.sampleRate,
-      //   },
-      // });
-      // worker.onmessage = e => {
-      //   console.log(e);
-      //   // this.synthEngine.setBuffer(sourceBuffer);
-      //   // this.synthEngine.setSearchSpace(e[0], e[1]);
-      //   // this.sourceDisplay.setBuffer(sourceBuffer);
-      //   // worker.terminate();
-      // };
-
       const [mfccFrames, times] = this.mfcc.computeBufferMfcc(sourceBuffer, this.hopSize);
       const searchTree = createKDTree(mfccFrames);
       console.log("Tree created")
@@ -195,6 +167,7 @@ export default class DrumMachine extends State {
 
   transportMosaicing(state) {
     // Callback for handling transport buttons for mosaicing
+    const now = Date.now();
     switch (state) {
       case 'play':
         // Mosaicing must start at a time synced with the other players
@@ -203,9 +176,11 @@ export default class DrumMachine extends State {
         const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
         const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
         this.scheduler.defer(() => this.analyzerEngine.start(), nextStartTimeLocal);
+        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
+        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }
   }
@@ -219,6 +194,7 @@ export default class DrumMachine extends State {
         this.nFramesBeat *= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
+        this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
       }
     } else {
       // New looping section must not last less than a frame long
@@ -226,6 +202,7 @@ export default class DrumMachine extends State {
         this.nFramesBeat /= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
+        this.context.writer.write(`Set selection shorter. N frames per loop : ${this.nFramesBeat}`);
       }
 
     }
@@ -294,7 +271,11 @@ export default class DrumMachine extends State {
               height="29";
               width="140";
               text="send to target"
-              @input="${e => this.setTargetFile(this.recordedBuffer)}"
+              @input="${e => {
+                this.setTargetFile(this.recordedBuffer);
+                const now = Date.now();
+                this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
+              }}"
             ></sc-button>
           </div>
 
@@ -338,6 +319,10 @@ export default class DrumMachine extends State {
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.detune = e.detail.value * 100}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
+                }}"
               ></sc-slider>
 
             </div>
@@ -361,6 +346,10 @@ export default class DrumMachine extends State {
                   this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
                 }}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
+                }}"
               ></sc-slider>
 
               <h3>grain duration</h3>
@@ -370,8 +359,10 @@ export default class DrumMachine extends State {
                 value="0.0928"
                 width="300"
                 display-number
-                @input="${e => {
-                  this.synthEngine.setGrainDuration(e.detail.value);
+                @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                 }}"
               ></sc-slider>
             </div>
@@ -381,7 +372,11 @@ export default class DrumMachine extends State {
 
           <sc-file-tree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
-            @input="${e => this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
+            @input="${e => {
+              this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+              const now = Date.now();
+              this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
+            }}"
           ></sc-file-tree>
 
           <div style="

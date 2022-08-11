@@ -23,6 +23,7 @@ class PlayerExperience extends AbstractExperience {
     this.filesystem = this.require('filesystem');
     this.audioBufferLoader = this.require('audio-buffer-loader');
     this.checkin = this.require('checkin');
+    this.logger = this.require('logger');
     
     renderInitializationScreens(client, config, $container);
   }
@@ -32,6 +33,10 @@ class PlayerExperience extends AbstractExperience {
 
     this.global = await this.client.stateManager.attach('global');
     this.checkinId = this.checkin.get('index');
+    const logFilename = `${this.client.id}-log-file.txt`;
+    this.startingTime = Date.now();
+    this.writer = await this.logger.create(logFilename);
+    
 
     this.stateMachine = new StateMachine(this);
 
@@ -50,6 +55,8 @@ class PlayerExperience extends AbstractExperience {
     this.participant = await this.client.stateManager.create('participant', {
       name: name,
     });
+
+    
    
     this.participant.subscribe(async updates => {
       if ('state' in updates) {
@@ -96,13 +103,20 @@ class PlayerExperience extends AbstractExperience {
 
     // Proceed to the system set in the config
     await this.participant.set({
-      state: 'clone'//this.global.get('system'),
+      state: 'solar-system'//this.global.get('system'),
     });
+
+    const now = new Date().toString()
+    this.writer.write(`${now} - player name : ${name} - checkin id : ${this.checkinId} - system : ${this.global.get('system')}`);
 
 
     window.addEventListener('resize', () => this.render());
     this.render();
   }
+
+  async exit() {
+    this.writer.close();
+  } 
 
   async loadSoundbank() {
     const soundbankTree = this.filesystem.get('soundbank');

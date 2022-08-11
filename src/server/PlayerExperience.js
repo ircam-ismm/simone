@@ -9,6 +9,7 @@ class PlayerExperience extends AbstractExperience {
     this.filesystem = this.require('filesystem');
     this.audioBufferLoader = this.require('audio-buffer-loader');
     this.checkin = this.require('checkin');
+    this.logger = this.require('logger');
 
   }
 

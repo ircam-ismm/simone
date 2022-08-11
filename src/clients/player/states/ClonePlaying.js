@@ -50,6 +50,8 @@ export default class ClonePlaying extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     // Waveform display
@@ -62,6 +64,8 @@ export default class ClonePlaying extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer 
@@ -100,7 +104,10 @@ export default class ClonePlaying extends State {
       this.synthEngine.setBuffer(sourceBuffer);
       this.synthEngine.setSearchSpace(searchTree, times);
       this.sourceDisplay.setBuffer(sourceBuffer);
+      const now = Date.now();
+      this.context.writer.write(`${now - this.context.startingTime}ms - set source file : recording-player-${idSourceToGet}.ogg`);
     }
+
   }
 
 
@@ -158,12 +165,15 @@ export default class ClonePlaying extends State {
   }
 
   transportMosaicing(state) {
+    const now = Date.now();
     switch (state) {
       case 'play':
-        this.analyzerEngine.start()
+        this.analyzerEngine.start();
+        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
+        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }
   }
@@ -211,7 +221,11 @@ export default class ClonePlaying extends State {
               height="29";
               width="140";
               text="send to target"
-              @input="${e => this.setTargetFile(this.recordedBuffer)}"
+              @input="${e => {
+                this.setTargetFile(this.recordedBuffer);
+                const now = Date.now();
+                this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
+              }}"
             ></sc-button>
           </div>
 
@@ -255,6 +269,10 @@ export default class ClonePlaying extends State {
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.detune = e.detail.value * 100}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
+                }}"
               ></sc-slider>
 
             </div>
@@ -278,6 +296,10 @@ export default class ClonePlaying extends State {
                   this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
                 }}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
+                }}"
               ></sc-slider>
 
               <h3>grain duration</h3>
@@ -289,6 +311,10 @@ export default class ClonePlaying extends State {
                 display-number
                 @input="${e => {
                   this.synthEngine.setGrainDuration(e.detail.value);
+                }}"
+                @change="${e => {
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                 }}"
               ></sc-slider>
             </div>

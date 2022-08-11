@@ -1,5 +1,5 @@
 {
-  "name": "mic-network-experiments",
+  "name": "distributed_mosaicing",
   "authors": [
     "Aliénor Golvet"
   ],
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/collective-soundworks/soundworks-template"
+    "url": "https://github.com/agolvet/distributed-mosaicing"
   },
   "dependencies": {
     "@ircam/simple-components": "^2.1.1",
@@ -32,7 +32,7 @@
     "@soundworks/plugin-platform": "^1.0.2",
     "@soundworks/plugin-scripting": "^1.0.1",
     "@soundworks/plugin-sync": "^1.0.0",
-    "@soundworks/state-manager-osc": "^0.2.0",
+    "@soundworks/plugin-logger": "^1.1.0",
     "@soundworks/template-helpers": "^2.0.0",
     "@webcomponents/webcomponentsjs": "^2.4.3",
     "buffer": "^6.0.3",
