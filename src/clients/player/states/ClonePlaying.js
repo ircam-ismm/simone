@@ -7,7 +7,6 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from '..//Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
-// import MosaicingSynth from '../MosaicingSynth';
 import AnalyzerEngine from '../AnalyzerEngine';
 import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
@@ -304,9 +303,9 @@ export default class ClonePlaying extends State {
 
               <h3>grain duration</h3>
               <sc-slider
-                min="0.02321995"
-                max="0.37"
-                value="0.0928"
+                min="0.02"
+                max="0.5"
+                value="0.25"
                 width="300"
                 display-number
                 @input="${e => {

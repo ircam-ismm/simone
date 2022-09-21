@@ -7,6 +7,7 @@ import '@ircam/simple-components/sc-record.js';
 import Mfcc from '../Mfcc.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
+import BufferSynth from '../BufferSynth.js';
 import AnalyzerEngine from '../AnalyzerEngine';
 import SynthEngine from '../SynthEngine';;
 import { Scheduler } from 'waves-masters';
@@ -87,7 +88,7 @@ export default class PerformanceState extends State {
     this.sharedArray = [];
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
     this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.audioContext.destination);
+    this.synthEngine.connect(this.bus);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
@@ -99,7 +100,7 @@ export default class PerformanceState extends State {
     });
 
     this.targetBufferSynth = new BufferSynth(this.context.audioContext, this.waveformWidth);
-    this.targetBufferSynth.connect(this.bus);
+    this.targetBufferSynth.connect(this.context.audioContext.destination);
   }
 
   setSourceFile(sourceBuffer) {
@@ -213,7 +214,7 @@ export default class PerformanceState extends State {
           <sc-file-tree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => this.setTargetFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
-            height="150"
+            height="200"
           ></sc-file-tree>
 
           <div style="position: relative">
@@ -369,9 +370,9 @@ export default class PerformanceState extends State {
 
               <h3>grain duration</h3>
               <sc-slider
-                min="0.02321995"
-                max="0.18575964"
-                value="0.0928"
+                min="0.02"
+                max="0.5"
+                value="0.25"
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"

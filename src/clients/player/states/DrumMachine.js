@@ -31,8 +31,9 @@ export default class DrumMachine extends State {
 
     // Mosaicing
     this.bpm = 120; 
-    this.nFramesBeat = 8; // length of the looping section (in number of frames)
-    this.maxNFramesBeat = 32 // maximum length of looping section (in n of frames)
+    this.nFramesBeat = 8; // initial length of the looping section (in number of frames)
+    this.selectionLength = this.nFramesBeat*this.frameSize/44100;
+    this.maxNFramesBeat = 64 // maximum length of looping section (in n of frames)
 
     // Waveform display
     this.waveformWidth = 800;
@@ -94,6 +95,9 @@ export default class DrumMachine extends State {
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
     });
 
+
+    const $zanesi = this.context.audioBufferLoader.data["zanesi.wav"];
+    this.setTargetFile($zanesi);
   }
 
   setSourceFile(sourceBuffer) {
@@ -354,9 +358,9 @@ export default class DrumMachine extends State {
 
               <h3>grain duration</h3>
               <sc-slider
-                min="0.02321995"
-                max="0.37"
-                value="0.0928"
+                min="0.02"
+                max="0.5"
+                value="0.25"
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"

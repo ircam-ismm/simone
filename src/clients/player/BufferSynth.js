@@ -109,7 +109,6 @@ class BufferSynth {
     this.bufferPlayerNode.detune.value = this._detune;
     this.bufferPlayerNode.connect(this.output);
     if (this._loop) {
-      console.log('new loop', this.startTime, this.endTime);
       this.bufferPlayerNode.loop = true;
       this.bufferPlayerNode.loopStart = this.startTime;
       this.bufferPlayerNode.loopEnd = this.endTime;

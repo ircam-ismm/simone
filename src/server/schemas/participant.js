@@ -28,5 +28,21 @@ export default {
     type: 'string',
     default: null,
     nullable: true,
+  },
+  volume: {
+    type: 'float',
+    default: 0.5,
+  },
+  detune: {
+    type: 'float',
+    default: 0,
+  },
+  grainDuration: {
+    type: 'float',
+    default: 0.25,
+  },
+  sourceFileLoaded: {
+    type: 'boolean',
+    default: false,
   }
 };

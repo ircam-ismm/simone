@@ -71,7 +71,18 @@ export default class SolarSystemSatellite extends State {
       }
       if ('sourceFilename' in updates) {
         this.setSourceFile(this.context.audioBufferLoader.data[updates.sourceFilename]);
+        this.context.participant.set({sourceFileLoaded: true});
       }
+      if ('volume' in updates) {
+        this.synthEngine.volume = updates.volume;
+      }
+      if ('detune' in updates) {
+        this.synthEngine.detune = updates.detune * 100;
+      }
+      if ('grainDuration' in updates) {
+        this.synthEngine.setGrainDuration(updates.grainDuration);
+      }
+      this.render();
     });
 
     // find player Ω and subscribe to incoming data
@@ -145,7 +156,9 @@ export default class SolarSystemSatellite extends State {
           <sc-file-tree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => {
+              this.context.participant.set({ sourceFileLoaded: false});
               this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+              this.context.participant.set({ sourceFilename : e.detail.value.name});
               const now = Date.now();
               this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
             }}"
@@ -191,20 +204,26 @@ export default class SolarSystemSatellite extends State {
               <sc-slider
                 min="0"
                 max="1"
-                value="0.5"
+                value="${this.context.participant.get('volume')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.volume = e.detail.value}"
+                @input="${e => {
+                  this.synthEngine.volume = e.detail.value;
+                  this.context.participant.set({volume: e.detail.value});
+                }}"
               ></sc-slider>
 
               <h3>detune</h3>
               <sc-slider
                 min="-24"
                 max="24"
-                value="0"
+                value="${this.context.participant.get('detune')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.detune = e.detail.value * 100}"
+                @input="${e => {
+                  this.synthEngine.detune = e.detail.value * 100;
+                  this.context.participant.set({ detune: e.detail.value });
+                }}"
                 @change="${e => {
                   const now = Date.now();
                   this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
@@ -222,12 +241,15 @@ export default class SolarSystemSatellite extends State {
             >
               <h3>grain duration</h3>
               <sc-slider
-                min="0.02321995"
-                max="0.37"
-                value="0.0928"
+                min="0.02"
+                max="0.5"
+                value="${this.context.participant.get('grainDuration')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
+                @input="${e => {
+                  this.synthEngine.setGrainDuration(e.detail.value);
+                  this.context.participant.set({ grainDuration: e.detail.value });
+                }}"
                 @change="${e => {
                   const now = Date.now();
                   this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);

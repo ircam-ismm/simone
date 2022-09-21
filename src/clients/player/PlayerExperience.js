@@ -103,7 +103,7 @@ class PlayerExperience extends AbstractExperience {
 
     // Proceed to the system set in the config
     await this.participant.set({
-      state: 'solar-system'//this.global.get('system'),
+      state: this.global.get('system'),
     });
 
     const now = new Date().toString()

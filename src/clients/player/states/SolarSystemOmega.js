@@ -97,6 +97,10 @@ export default class SolarSystemOmega extends State {
               delete this.players[playerName];
               this.context.render();
             });
+            playerState.subscribe(updates => {
+              this.context.render();
+            });
+
             this.players[playerName] = playerState;
             this.context.render();
           }
@@ -238,7 +242,7 @@ export default class SolarSystemOmega extends State {
                       "
                       @change="${e => {
                         if (e.target.value !== "") {
-                          state.set({ sourceFilename: e.target.value });
+                          state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
                           const now = Date.now();
                           this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
                         }
@@ -246,11 +250,60 @@ export default class SolarSystemOmega extends State {
                     >
                       <option value="">select a source file</option>
                       ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
-                        return html`
-                          <option value="${filename}">${filename}</option>
-                        `
+                        if (state.get('sourceFilename') === filename) {
+                          return html`
+                            <option value="${filename}" selected>${filename}</option>
+                          `
+                        } else {
+                          return html`
+                            <option value="${filename}">${filename}</option>
+                          `
+                        }
                       })}
                     </select>
+
+                    <div id="readyCircle-player${name}" style="
+                      height: 10px;
+                      width: 10px;
+                      background: ${state.get('sourceFileLoaded') ? "green" : "red"};
+                      clip-path: circle(5px at center);
+                    ">
+                      
+                    </div>
+
+                  </div>
+                  <div>
+                    volume
+                    <sc-slider
+                      min="0"
+                      max="1"
+                      value="${state.get('volume')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ volume: e.detail.value})}"
+                    ></sc-slider>
+                  </div>
+                  <div>
+                    detune
+                    <sc-slider
+                      min="-24"
+                      max="24"
+                      value="${state.get('detune')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ detune: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  <div>
+                    grain dur.
+                    <sc-slider
+                      min="0.02321995"
+                      max="0.37"
+                      value="${state.get('grainDuration')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ grainDuration: e.detail.value })}"
+                    ></sc-slider>
                   </div>
                 `;
               })}

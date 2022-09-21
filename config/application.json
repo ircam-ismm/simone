@@ -15,6 +15,6 @@
     },
   },
 
-  system: 'solar-system-dispatch',
+  system: 'no-microphone',
   nPlayers: 4,
 }

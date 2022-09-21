@@ -270,9 +270,9 @@ export default class NoMicrophone extends State {
 
               <h3>grain duration</h3>
               <sc-slider
-                min="0.02321995"
-                max="0.18575964"
-                value="0.0928"
+                min="0.02"
+                max="0.5"
+                value="0.25"
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
