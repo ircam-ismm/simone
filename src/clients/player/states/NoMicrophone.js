@@ -23,7 +23,7 @@ export default class NoMicrophone extends State {
     // audio analysis
     this.frameSize = 4096;
     this.hopSize = 512;
-    this.sourceSampleRate = this.context.audioContext.sampleRate;
+    this.sampleRate = this.context.audioContext.sampleRate;
     this.mfccBands = 24;
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
@@ -32,7 +32,8 @@ export default class NoMicrophone extends State {
     // Mosaicing
     this.bpm = 120;
     this.nFramesBeat = 8; // length of the looping section (in number of frames)
-    this.maxNFramesBeat = 32 // maximum length of looping section (in n of frames)
+    this.selectionLength = this.nFramesBeat * this.frameSize / 44100;
+    this.maxNFramesBeat = 64 // maximum length of looping section (in n of frames)
 
     // Waveform display
     this.waveformWidth = 800;
@@ -101,8 +102,8 @@ export default class NoMicrophone extends State {
       this.analyzerEngine.setNorm(analysis[2], analysis[3]); // values for normalization of data
       this.targetDisplay.setBuffer(targetBuffer);
       this.targetDisplay.setSelectionStartTime(0);
-      this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sourceSampleRate);
-      this.selectionLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
+      this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sampleRate);
+      this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
     }
   }
 
@@ -129,14 +130,14 @@ export default class NoMicrophone extends State {
   transportMosaicing(state) {
     switch (state) {
       case 'play':
-        const beatLength = this.nFramesBeat * this.frameSize / this.sourceSampleRate;
+        const beatLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         const currentSyncTime = this.context.sync.getSyncTime();
         const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
         const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => this.mosaicingSynth.start(), nextStartTimeLocal);
+        this.scheduler.defer(() => this.analyzerEngine.start(), nextStartTimeLocal);
         break;
       case 'stop':
-        this.mosaicingSynth.stop();
+        this.analyzerEngine.stop();
         break;
     }
   }

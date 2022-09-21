@@ -191,6 +191,7 @@ export default class DrumMachine extends State {
 
   changeSelectionLength(type) {
     // Callback for changing length of looping section (*2 or /2)
+    console.log(type, this.selectionLength);
     if (type === 'longer') {
       const newLength = this.selectionLength * 2;
       // New looping section must not go out of bounds and is cannot exceed max value
@@ -198,6 +199,7 @@ export default class DrumMachine extends State {
         this.nFramesBeat *= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
+        console.log(this.selectionLength);
         this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
       }
     } else {
