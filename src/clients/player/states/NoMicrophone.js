@@ -65,7 +65,7 @@ export default class NoMicrophone extends State {
     this.sharedArray = [];
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
     this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.audioContext.destination);
+    this.synthEngine.connect(this.context.globalVolume);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
@@ -112,7 +112,7 @@ export default class NoMicrophone extends State {
       case 'play':
         this.sourcePlayerNode = new AudioBufferSourceNode(this.context.audioContext);
         this.sourcePlayerNode.buffer = this.currentSource;
-        this.sourcePlayerNode.connect(this.context.audioContext.destination);
+        this.sourcePlayerNode.connect(this.context.globalVolume);
 
         this.sourcePlayerNode.start();
 

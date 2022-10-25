@@ -46,6 +46,8 @@ class PlayerExperience extends AbstractExperience {
     let name;
     if (hash === 'omega') {
       name = 'Ω';
+    } else if (hash === 'omega-solo') {
+      name = 'Ω*';
     } else {
       const availableNames = this.global.get('availableNames');
       name = availableNames.shift();
@@ -55,12 +57,20 @@ class PlayerExperience extends AbstractExperience {
     this.participant = await this.client.stateManager.create('participant', {
       name: name,
     });
-
     
-   
     this.participant.subscribe(async updates => {
       if ('state' in updates) {
         this.stateMachine.setState(updates.state);
+      }
+      if ('globalVolume' in updates) {
+        this.globalVolume.gain.setTargetAtTime(updates.globalVolume, this.audioContext.currentTime, 0.02);
+      }
+      if ('globalMute' in updates) {
+        if (updates.globalMute) {
+          this.globalMute.gain.setTargetAtTime(0, this.audioContext.currentTime, 0.02);
+        } else {
+          this.globalMute.gain.setTargetAtTime(1, this.audioContext.currentTime, 0.02);
+        }
       }
       this.render();
     });
@@ -99,7 +109,13 @@ class PlayerExperience extends AbstractExperience {
 
     this.fileReader = new FileReader();
 
-
+    //Global audio
+    this.globalVolume = new GainNode(this.audioContext);
+    this.globalVolume.gain.value = this.participant.get('globalVolume');
+    this.globalMute = new GainNode(this.audioContext);
+    this.globalVolume.gain.value = this.participant.get('globalMute') ? 0 : 1;
+    this.globalVolume.connect(this.globalMute);
+    this.globalMute.connect(this.audioContext.destination);
 
     // Proceed to the system set in the config
     await this.participant.set({
@@ -108,7 +124,6 @@ class PlayerExperience extends AbstractExperience {
 
     const now = new Date().toString()
     this.writer.write(`${now} - player name : ${name} - checkin id : ${this.checkinId} - system : ${this.global.get('system')}`);
-
 
     window.addEventListener('resize', () => this.render());
     this.render();

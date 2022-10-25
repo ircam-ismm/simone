@@ -27,17 +27,6 @@ async function launch($container, index) {
     // -------------------------------------------------------------------
     // client.pluginManager.register(pluginName, pluginFactory, [pluginOptions], [dependencies])
 
-    client.pluginManager.register('platform', pluginPlatformFactory, {
-      features: [
-        ['web-audio', audioContext],
-      ]
-    }, []);
-    client.pluginManager.register('sync', pluginSyncFactory, {
-      getTimeFunction: () => audioContext.currentTime,
-    }, ['platform']);
-    client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
-    client.pluginManager.register('audio-buffer-loader', pluginAudioBufferLoaderFactory, {}, []);
-
     // -------------------------------------------------------------------
     // launch application
     // -------------------------------------------------------------------

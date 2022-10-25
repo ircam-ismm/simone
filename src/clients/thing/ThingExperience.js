@@ -104,7 +104,7 @@ class ThingExperience extends AbstractExperience {
         case 'participant':
           const playerState = await this.client.stateManager.attach(schemaName, stateId);
           const playerName = playerState.get('name');
-          if (playerName === 'Ω') {
+          if (playerName === 'Ω' || playerName === 'Ω*') {
             playerState.subscribe(updates => {
               if ('mosaicingData' in updates) {
                 if (this.playing) {

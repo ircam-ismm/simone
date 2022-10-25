@@ -12,6 +12,10 @@ export default class SolarSystemDispatch extends State {
       this.context.participant.set({
         state: 'solar-system-omega',
       });
+    } else if (name === 'Ω*') {
+      this.context.participant.set({
+        state: 'solar-system-omega-solo',
+      });
     } else {
       this.context.participant.set({
         state: 'solar-system-satellite',

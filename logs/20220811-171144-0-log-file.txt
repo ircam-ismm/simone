@@ -1,6 +1,0 @@
-2459ms - > enter solar-system
-Thu Aug 11 2022 17:11:46 GMT+0200 (heure d’été d’Europe centrale) - player name : α - checkin id : 0 - system : solar-system-dispatch
-2483ms - > enter solar-system-satellite
-28598ms - set grain duration : 0.28
-31878ms - set detune : 10.158
-36251ms - set source file : french-woman.wav

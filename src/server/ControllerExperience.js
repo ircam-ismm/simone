@@ -3,11 +3,6 @@ import { AbstractExperience } from '@soundworks/core/server';
 class ControllerExperience extends AbstractExperience {
   constructor(server, clientTypes, options = {}) {
     super(server, clientTypes);
-
-    this.platform = this.require('platform');
-    this.sync = this.require('sync');
-    this.filesystem = this.require('filesystem');
-    this.audioBufferLoader = this.require('audio-buffer-loader');
   }
 
   start() {

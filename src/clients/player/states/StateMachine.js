@@ -1,6 +1,7 @@
 import DrumMachine from './DrumMachine.js';
 import SolarSystemSatellite from './SolarSystemSatellite.js';
 import SolarSystemOmega from './SolarSystemOmega.js';
+import SolarSystemOmegaSolo from './SolarSystemOmegaSolo.js';
 import SolarSystemDispatch from './SolarSystemDispatch.js';
 import NoMicrophone from './NoMicrophone.js';
 import PerformanceState from './PerformanceState.js';
@@ -18,6 +19,7 @@ const states = {
   'solar-system-dispatch': SolarSystemDispatch,
   'solar-system-satellite': SolarSystemSatellite,
   'solar-system-omega': SolarSystemOmega,
+  'solar-system-omega-solo': SolarSystemOmegaSolo,
   'no-microphone': NoMicrophone,
   'performance': PerformanceState,
 };

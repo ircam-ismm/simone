@@ -111,7 +111,7 @@ server.stateManager.registerSchema('global', globalSchema);
           playerState.onDetach(() => {
             // Once a player leaves, their name is put back in the pool
             const name = playerState.get('name');
-            if (name !== 'Ω' && name !== null) {
+            if (name !== 'Ω' && name !== 'Ω*' && name !== null) {
               const availableNames = global.get('availableNames');
               availableNames.unshift(name);
               global.set({ availableNames: availableNames });

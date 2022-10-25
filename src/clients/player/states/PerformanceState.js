@@ -22,8 +22,8 @@ export default class PerformanceState extends State {
     this.currentTarget = null;
 
     // audio analysis
-    this.frameSize = 4096;
-    this.hopSize = 512;
+    this.frameSize = 1024;
+    this.hopSize = 256;
     this.sampleRate = this.context.audioContext.sampleRate;
     this.mfccBands = 24;
     this.mfccCoefs = 12;

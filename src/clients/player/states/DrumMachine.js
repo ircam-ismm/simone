@@ -5,6 +5,7 @@ import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
 import Mfcc from '../Mfcc.js';
+import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
 import AnalyzerEngine from '../AnalyzerEngine';
@@ -57,6 +58,14 @@ export default class DrumMachine extends State {
       this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
+    //
+    this.context.participant.subscribe(updates => {
+      if ("message" in updates) {
+        const $messageBox = document.getElementById("messageBox");
+        $messageBox.innerText = updates.message;
+      }
+    });
+
     // Waveforms display
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidth, false, true);
     this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, false);
@@ -83,7 +92,7 @@ export default class DrumMachine extends State {
     this.sharedArray = []; 
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
     this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.audioContext.destination);
+    this.synthEngine.connect(this.context.globalVolume);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
@@ -95,10 +104,15 @@ export default class DrumMachine extends State {
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
     });
 
-
-    const $zanesi = this.context.audioBufferLoader.data["zanesi.wav"];
-    this.setTargetFile($zanesi);
-  }
+    // Previous values sliders
+    this.currentValues = {
+      volume: this.context.participant.get('volume'),
+      detune: this.context.participant.get('detune'),
+      grainPeriod: this.context.participant.get('grainPeriod'),
+      grainDuration: this.context.participant.get('grainDuration'),
+    };
+    this.previousValues = {...this.currentValues};
+  } 
 
   setSourceFile(sourceBuffer) {
     console.log("loading source");
@@ -133,7 +147,7 @@ export default class DrumMachine extends State {
       case 'play':
         this.sourcePlayerNode = new AudioBufferSourceNode(this.context.audioContext);
         this.sourcePlayerNode.buffer = this.currentSource;
-        this.sourcePlayerNode.connect(this.context.audioContext.destination);
+        this.sourcePlayerNode.connect(this.context.globalVolume);
 
         this.sourcePlayerNode.start();
 
@@ -154,7 +168,7 @@ export default class DrumMachine extends State {
       case 'play':
         this.recorderPlayerNode = new AudioBufferSourceNode(this.context.audioContext);
         this.recorderPlayerNode.buffer = this.recordedBuffer;
-        this.recorderPlayerNode.connect(this.context.audioContext.destination);
+        this.recorderPlayerNode.connect(this.context.globalVolume);
 
         this.recorderPlayerNode.start();
 
@@ -191,7 +205,6 @@ export default class DrumMachine extends State {
 
   changeSelectionLength(type) {
     // Callback for changing length of looping section (*2 or /2)
-    console.log(type, this.selectionLength);
     if (type === 'longer') {
       const newLength = this.selectionLength * 2;
       // New looping section must not go out of bounds and is cannot exceed max value
@@ -199,7 +212,6 @@ export default class DrumMachine extends State {
         this.nFramesBeat *= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
-        console.log(this.selectionLength);
         this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
       }
     } else {
@@ -214,6 +226,32 @@ export default class DrumMachine extends State {
     }
   }
 
+  switchValueSlider(name) {
+    const temp = this.previousValues[name];
+    this.previousValues[name] = this.currentValues[name];
+    this.currentValues[name] = temp;
+    switch (name) {
+      case 'volume':
+        this.synthEngine.volume = decibelToLinear(temp);
+        this.context.participant.set({ volume: temp });
+        break;
+      case 'detune':
+        this.synthEngine.detune = temp * 100;
+        this.context.participant.set({ detune: temp });
+        break;
+      case 'grainPeriod':
+        this.analyzerEngine.setPeriod(temp);
+        this.synthEngine.setGrainPeriod(temp);
+        this.context.participant.set({ grainPeriod: temp });
+        break;
+      case 'grainDuration': 
+        this.synthEngine.setGrainDuration(temp);
+        this.context.participant.set({ grainDuration: temp });
+        break;
+    }
+    this.render();
+  }
+
 
   render() {
     return html`
@@ -222,70 +260,77 @@ export default class DrumMachine extends State {
         </div>
 
         <div style="padding-left: 20px; padding-right: 20px">
-          <h3>Target</h3>
+          
+          <div style="display: flex">
+            <div>
+              <h3>Target</h3>
 
-          <div style="position: relative">
-            ${this.targetDisplay.render()}
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 10px;
-              "
-              width="40";
-              text="*2"
-              @input="${e => this.changeSelectionLength("longer")}"
-            ></sc-button>
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 55px;
-              "
-              width="40";
-              text="/2"
-              @input="${e => this.changeSelectionLength("smaller")}"
-            ></sc-button>
+              <div style="position: relative">
+                ${this.targetDisplay.render()}
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                  "
+                  width="40";
+                  text="*2"
+                  @input="${e => this.changeSelectionLength("longer")}"
+                ></sc-button>
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 55px;
+                  "
+                  width="40";
+                  text="/2"
+                  @input="${e => this.changeSelectionLength("smaller")}"
+                ></sc-button>
+              </div>
+
+              <div style="position: relative">
+                ${this.recorderDisplay.render()}
+                <sc-record
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                  "
+                  @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+                ></sc-record>
+                <sc-transport
+                  id="transport-recorder"
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 45px;
+                  "
+                  buttons="[play, stop]"
+                  @change="${e => this.transportRecordFile(e.detail.value)}"
+                ></sc-transport>
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 110px;
+                  "
+                  height="29";
+                  width="140";
+                  text="send to target"
+                  @input="${e => {
+                    this.setTargetFile(this.recordedBuffer);
+                    const now = Date.now();
+                    this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
+                  }}"
+                ></sc-button>
+              </div>
+            </div>
+            <div style="margin-left: 20px">
+              <h3>Message from experimenter</h3>
+              <p id="messageBox"></p>
+            </div>
           </div>
-
-          <div style="position: relative">
-            ${this.recorderDisplay.render()}
-            <sc-record
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 10px;
-              "
-              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-            ></sc-record>
-            <sc-transport
-              id="transport-recorder"
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 45px;
-              "
-              buttons="[play, stop]"
-              @change="${e => this.transportRecordFile(e.detail.value)}"
-            ></sc-transport>
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 110px;
-              "
-              height="29";
-              width="140";
-              text="send to target"
-              @input="${e => {
-                this.setTargetFile(this.recordedBuffer);
-                const now = Date.now();
-                this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
-              }}"
-            ></sc-button>
-          </div>
-
-
 
           <div style="margin: 20px; padding: 20px; position: relative">
 
@@ -307,29 +352,61 @@ export default class DrumMachine extends State {
                 left: 150px;
               "
             >
-              <h3>volume</h3>
+              <h3>volume (dB)</h3>
               <sc-slider
-                min="0"
-                max="1"
-                value="0.5"
+                id="slider-volume"
+                min="-60"
+                max="0"
+                value="${this.context.participant.get('volume')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.volume = e.detail.value}"
+                @input="${e => {
+                  this.synthEngine.volume = decibelToLinear(e.detail.value);
+                  this.context.participant.set({volume: e.detail.value});
+                }}"
+                @change="${e => {
+                  if (e.detail.value !== this.currentValues.volume) {
+                    this.previousValues.volume = this.currentValues.volume;
+                    this.currentValues.volume = e.detail.value;
+                  }
+                }}"
               ></sc-slider>
+
+              <sc-button
+                width="90"
+                text="prev value"
+                @input="${e => this.switchValueSlider('volume')}"
+              >
+              </sc-button>
 
               <h3>detune</h3>
               <sc-slider
+                id="slider-detune"
                 min="-24"
                 max="24"
-                value="0"
+                value="${this.context.participant.get('detune')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.detune = e.detail.value * 100}"
+                @input="${e => {
+                  this.synthEngine.detune = e.detail.value * 100;
+                  this.context.participant.set({ detune: e.detail.value });
+                }}"
                 @change="${e => {
+                  if (e.detail.value !== this.currentValues.detune) {
+                    this.previousValues.detune = this.currentValues.detune;
+                    this.currentValues.detune = e.detail.value;
+                  }
                   const now = Date.now();
                   this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
                 }}"
               ></sc-slider>
+
+              <sc-button
+                width="90"
+                text="prev value"
+                @input="${e => this.switchValueSlider('detune')}"
+              >
+              </sc-button>
 
             </div>
 
@@ -337,40 +414,68 @@ export default class DrumMachine extends State {
               style="
                 position: absolute;
                 top: 0;
-                left: 480px;
+                left: 570px;
               "
             >
 
               <h3>grain period</h3>
               <sc-slider
+                id="slider-grainPeriod"
                 min="0.01"
                 max="0.1"
-                value="0.05"
+                value="${this.context.participant.get('grainPeriod')}"
                 width="300"
                 display-number
                 @input="${e => {
                   this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
+                  this.context.participant.set({ grainPeriod: e.detail.value });
                 }}"
                 @change="${e => {
+                  if (e.detail.value !== this.currentValues.grainPeriod) {
+                    this.previousValues.grainPeriod = this.currentValues.grainPeriod;
+                    this.currentValues.grainPeriod = e.detail.value;
+                  }
                   const now = Date.now();
                   this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
                 }}"
               ></sc-slider>
 
+              <sc-button
+                width="90"
+                text="prev value"
+                @input="${e => this.switchValueSlider('grainPeriod')}"
+              >
+              </sc-button>
+
               <h3>grain duration</h3>
               <sc-slider
+                id="slider-grainDuration"
                 min="0.02"
                 max="0.5"
-                value="0.25"
+                value="${this.context.participant.get('grainDuration')}"
                 width="300"
                 display-number
-                @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
+                @input="${e => {
+                  this.synthEngine.setGrainDuration(e.detail.value);
+                  this.context.participant.set({ grainDuration: e.detail.value });
+                }}"
                 @change="${e => {
+                  if (e.detail.value !== this.currentValues.grainDuration) {
+                    this.previousValues.grainDuration = this.currentValues.grainDuration;
+                    this.currentValues.grainDuration = e.detail.value;
+                  }
                   const now = Date.now();
                   this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                 }}"
               ></sc-slider>
+              
+              <sc-button
+                width="90"
+                text="prev value"
+                @input="${e => this.switchValueSlider('grainDuration')}"
+              >
+              </sc-button>
             </div>
           </div>
 
@@ -380,6 +485,7 @@ export default class DrumMachine extends State {
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => {
               this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+              this.context.participant.set({ sourceFilename: e.detail.value.name });
               const now = Date.now();
               this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
             }}"

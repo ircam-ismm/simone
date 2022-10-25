@@ -7,6 +7,7 @@ import '@ircam/simple-components/sc-record.js';
 import WaveformDisplay from '../WaveformDisplay';
 import State from './State.js';
 import { html } from 'lit/html.js';
+import toWav from 'audiobuffer-to-wav';
 
 export default class CloneRecording extends State {
   constructor(name, context) {
@@ -32,14 +33,19 @@ export default class CloneRecording extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.currentRecordingDecoded = audioBuffer;
       this.recordDisplay.setBuffer(audioBuffer);
+      this.cropStart = 0;
+      this.cropEnd = audioBuffer.duration;
     }
 
     this.context.mediaRecorder.addEventListener('dataavailable', this.mediaRecorderCb);
     this.context.fileReader.addEventListener('loadend', this.fileReaderCb);
 
     // Waveform display
-    this.recordDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth);
-
+    this.recordDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, true);
+    this.recordDisplay.setCallbackSelectionChange((start, end) => {
+      this.cropStart = start;
+      this.cropEnd = end;
+    });
   }
 
   exit() {
@@ -49,11 +55,30 @@ export default class CloneRecording extends State {
 
 
   async uploadRecordedFile() {
-    if (this.currentRecording) {
+    if (this.currentRecordingDecoded) {
+      // crop 
+      const sampleRate = this.context.audioContext.sampleRate;
+      const nChannels = this.currentRecordingDecoded.numberOfChannels
+      
+      const startIdx = this.cropStart*sampleRate;
+      const endIdx = this.cropEnd*sampleRate;
+      const croppedBuffer = this.context.audioContext.createBuffer(
+        nChannels,
+        endIdx - startIdx,
+        sampleRate
+      );
+      const tempArray = new Float32Array(endIdx - startIdx);
+      for (let c = 0; c < nChannels; c++) {
+        this.currentRecordingDecoded.copyFromChannel(tempArray, c, startIdx);
+        croppedBuffer.copyToChannel(tempArray, c);
+      }
+      //Encode as wav
+      const wavBuffer = toWav(croppedBuffer);
+      const recordingBlob = new Blob([wavBuffer], { type: 'audio/wav' });
       // upload to server
-      const filename = `recording-player-${this.context.checkinId}.ogg`;
+      const filename = `recording-player-${this.context.checkinId}.wav`;
       const file = [];
-      file[filename] = this.currentRecording;
+      file[filename] = recordingBlob;
       this.context.filesystem.upload('user-files', file);
 
       // updates number of players ready and proceed to waiting state
@@ -72,7 +97,8 @@ export default class CloneRecording extends State {
         this.recPlayerNode.buffer = this.currentRecordingDecoded;
         this.recPlayerNode.connect(this.context.audioContext.destination);
 
-        this.recPlayerNode.start();
+        const now = this.context.audioContext.currentTime;
+        this.recPlayerNode.start(now, this.cropStart, this.cropEnd - this.cropStart);
 
         this.recPlayerNode.addEventListener('ended', event => {
           const $transportSource = document.querySelector('#transport-source');
@@ -104,12 +130,13 @@ export default class CloneRecording extends State {
             "
           >
             <h2 style="
-                width: 100%;
+                width: 50%;
                 text-align: center;
               "
             >
               Please record at least 30 seconds of audio. 
               You can retry recording as much as you want and preview the sound.
+              You can also crop your recordings by selecting only a section on the waveform
             </h2>
             <div style="
                 position: relative;

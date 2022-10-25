@@ -31,11 +31,15 @@ export default {
   },
   volume: {
     type: 'float',
-    default: 0.5,
+    default: 0,
   },
   detune: {
     type: 'float',
     default: 0,
+  },
+  grainPeriod: {
+    type: 'float',
+    default: 0.05,
   },
   grainDuration: {
     type: 'float',
@@ -44,5 +48,17 @@ export default {
   sourceFileLoaded: {
     type: 'boolean',
     default: false,
+  },
+  globalVolume: {
+    type: 'float',
+    default: 1,
+  },
+  globalMute: {
+    type: 'boolean',
+    default: false,
+  },
+  message: {
+    type: 'string',
+    default: '',
   }
 };

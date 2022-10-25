@@ -11,7 +11,7 @@ import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
 
-export default class SolarSystemOmega extends State {
+export default class SolarSystemOmegaSolo extends State {
   constructor(name, context) {
     super(name, context);
 
@@ -48,14 +48,6 @@ export default class SolarSystemOmega extends State {
       this.recorderDisplay.setBuffer(audioBuffer);
       const now = Date.now();
       this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
-    });
-
-    //
-    this.context.participant.subscribe(updates => {
-      if ("message" in updates) {
-        const $messageBox = document.getElementById("messageBox");
-        $messageBox.innerText = updates.message;
-      }
     });
 
     // Waveform display
@@ -100,7 +92,7 @@ export default class SolarSystemOmega extends State {
         case 'participant':
           const playerState = await this.context.client.stateManager.attach(schemaName, stateId);
           const playerName = playerState.get('name');
-          if (playerName !== 'Ω' && playerName !== 'Ω*') {
+          if (playerName !== 'Ω' && playerName !== 'Ω*' ) {
             playerState.onDetach(() => {
               delete this.players[playerName];
               this.context.render();
@@ -159,56 +151,56 @@ export default class SolarSystemOmega extends State {
           <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
         </div>
 
-        <div style="display: flex; padding-left: 20px; padding-right: 20px">
-          <div>
-            <h3>Target</h3>
+        <div style="position: relative; padding-left: 20px; padding-right: 20px">
+          <h3>Target</h3>
 
-            <div style="position: relative">
-              ${this.targetDisplay.render()}
-            </div>
+          <div style="position: relative">
+            ${this.targetDisplay.render()}
+          </div>
 
-            <div style="position: relative">
-              ${this.recorderDisplay.render()}
-              <sc-record
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 10px;
-                "
-                @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-              ></sc-record>
-              <sc-transport
-                id="transport-recorder"
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 45px;
-                "
-                buttons="[play, stop]"
-                @change="${e => this.transportRecordFile(e.detail.value)}"
-              ></sc-transport>
-              <sc-button
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 110px;
-                "
-                height="29";
-                width="140";
-                text="send to target"
-                @input="${e => {
-                  this.setTargetFile(this.recordedBuffer);
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
-                }}"
-              ></sc-button>
-            </div>
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
+            <sc-record
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 10px;
+              "
+              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+            ></sc-record>
+            <sc-transport
+              id="transport-recorder"
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 45px;
+              "
+              buttons="[play, stop]"
+              @change="${e => this.transportRecordFile(e.detail.value)}"
+            ></sc-transport>
+            <sc-button
+              style="
+                position: absolute;
+                bottom: 10px;
+                left: 110px;
+              "
+              height="29";
+              width="140";
+              text="send to target"
+              @input="${e => {
+                this.setTargetFile(this.recordedBuffer);
+                const now = Date.now();
+                this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
+              }}"
+            ></sc-button>
           </div>
 
           <div
             style="
-              width: 200px;
-              margin-left: 20px;
+              position: absolute;
+              top: 0px;
+              left: ${this.waveformWidth + 40}px;
+              width: 400px;
             "
           >
             <h3>Players</h3>
@@ -221,7 +213,6 @@ export default class SolarSystemOmega extends State {
                       justify-content: space-around;
                       align-items: center;
                       margin-bottom: 20px;
-                      width: 200px;
                     "
                   >
                     <h2>
@@ -243,17 +234,80 @@ export default class SolarSystemOmega extends State {
                         }
                       }}"
                     ></sc-transport>
+
+                    <select 
+                      style="
+                        width: 200px;
+                        height: 30px
+                      "
+                      @change="${e => {
+                        if (e.target.value !== "") {
+                          state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
+                        }
+                      }}"  
+                    >
+                      <option value="">select a source file</option>
+                      ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
+                        if (state.get('sourceFilename') === filename) {
+                          return html`
+                            <option value="${filename}" selected>${filename}</option>
+                          `
+                        } else {
+                          return html`
+                            <option value="${filename}">${filename}</option>
+                          `
+                        }
+                      })}
+                    </select>
+
+                    <div id="readyCircle-player${name}" style="
+                      height: 10px;
+                      width: 10px;
+                      background: ${state.get('sourceFileLoaded') ? "green" : "red"};
+                      clip-path: circle(5px at center);
+                    ">
+                      
                     </div>
 
+                  </div>
+                  <div style="margin:10px">
+                    volume
+                    <sc-slider
+                      min="0"
+                      max="1"
+                      value="${state.get('volume')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ volume: e.detail.value})}"
+                    ></sc-slider>
+                  </div>
+                  <div style="margin:10px">
+                    detune
+                    <sc-slider
+                      min="-24"
+                      max="24"
+                      value="${state.get('detune')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ detune: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  <div style="margin:10px">
+                    grain dur.
+                    <sc-slider
+                      min="0.02321995"
+                      max="0.37"
+                      value="${state.get('grainDuration')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ grainDuration: e.detail.value })}"
+                    ></sc-slider>
                   </div>
                 `;
               })}
             </div>
-          </div>
-
-          <div style="margin-left: 20px">
-            <h3>Message from experimenter</h3>
-            <p id="messageBox"></p>
           </div>
 
         </div>
