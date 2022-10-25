@@ -275,8 +275,8 @@ export default class SolarSystemOmegaSolo extends State {
                   <div style="margin:10px">
                     volume
                     <sc-slider
-                      min="0"
-                      max="1"
+                      min="-60"
+                      max="0"
                       value="${state.get('volume')}"
                       width="300"
                       display-number

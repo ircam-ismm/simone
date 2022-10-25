@@ -1,5 +1,6 @@
 import { AbstractExperience } from '@soundworks/core/client.js';
 import { AudioContext, OscillatorNode, GainNode } from 'node-web-audio-api';
+import decibelToLinear from './math/decibelToLinear.js';
 import Mfcc from './Mfcc.js';
 import createKDTree from 'static-kdtree';
 import { Scheduler } from 'waves-masters';
@@ -95,7 +96,17 @@ class ThingExperience extends AbstractExperience {
           console.log("Tree created")
           this.synthEngine.setBuffer(buffer);
           this.synthEngine.setSearchSpace(searchTree, times);
+          this.participant.set({ sourceFileLoaded: true });
         }
+      }
+      if ('volume' in updates) {
+        this.synthEngine.volume = decibelToLinear(updates.volume);
+      }
+      if ('detune' in updates) {
+        this.synthEngine.detune = updates.detune * 100;
+      }
+      if ('grainDuration' in updates) {
+        this.synthEngine.setGrainDuration(updates.grainDuration);
       }
     });
 
