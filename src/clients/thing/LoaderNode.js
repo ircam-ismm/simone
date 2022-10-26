@@ -6,13 +6,11 @@ import http from 'node:http';
 import https from 'node:https';
 
 import pkg from 'node-web-audio-api';
-const { AudioContext, load } = pkg;
-
-const audioContext = new AudioContext();
+const { load } = pkg;
 
 export default class Loader {
-  constructor() {
-    // console.log('@ircam/sc-loader node');
+  constructor(audioContext) {
+    this.audioContext = audioContext;
   }
 
   async load(resource) {
@@ -33,7 +31,7 @@ export default class Loader {
 
               // console.log(fs.readFileSync(tempfile));
               const fileRs = load(tempfile);
-              const buffer = await audioContext.decodeAudioData(fileRs);
+              const buffer = await this.audioContext.decodeAudioData(fileRs);
               // console.log(buffer);
 
               resolve(buffer);

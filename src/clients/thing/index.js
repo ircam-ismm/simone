@@ -3,8 +3,6 @@ import { Client } from '@soundworks/core/client.js';
 import getConfig from '../../utils/getConfig.js';
 import { AudioContext } from 'node-web-audio-api';
 
-
-
 import pluginSyncFactory from '@soundworks/plugin-sync/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 // import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
@@ -13,8 +11,8 @@ import pluginCheckinFactory from '@soundworks/plugin-checkin/client';
 import ThingExperience from './ThingExperience.js';
 
 
-const audioContext = new AudioContext();
-process.audioContext = audioContext;
+const audioContext = new AudioContext({ latencyHint: 'playback' });
+// process.audioContext = audioContext;
 
 // emulate several bugs for testing purposes
 const ENV = process.env.ENV || 'default';

@@ -1,14 +1,11 @@
 import { AbstractExperience } from '@soundworks/core/client.js';
-import { AudioContext, OscillatorNode, GainNode } from 'node-web-audio-api';
+import { OscillatorNode, GainNode } from 'node-web-audio-api';
 import decibelToLinear from './math/decibelToLinear.js';
 import Mfcc from './Mfcc.js';
 import createKDTree from 'static-kdtree';
 import { Scheduler } from 'waves-masters';
 import SynthEngineNode from './SynthEngineNode';
 import Loader from './LoaderNode.js'
-
-// const audioContext = new AudioContext();
-// process.audioContext = audioContext;
 
 class ThingExperience extends AbstractExperience {
   constructor(client, config, audioContext) {
@@ -22,7 +19,7 @@ class ThingExperience extends AbstractExperience {
     // this.audioBufferLoader = this.require('audio-buffer-loader');
     this.checkin = this.require('checkin');
 
-    this.bufferLoader = new Loader();
+    this.bufferLoader = new Loader(audioContext);
 
     // parameters for audio analysis
     this.frameSize = 4096;
