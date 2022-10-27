@@ -1,3 +1,26 @@
+addEventListener('message', e => {
+  const {type, data} = e.data;
+  if (type === 'message') {
+    postMessage({ 
+      type: 'message', 
+      data,
+    });
+  }
+  if (type === 'analyze') {
+    console.log('begin analysis');
+    const init = data.analysisInitData;
+    const analyzer = new Mfcc(init.mfccBands, init.mfccCoefs, init.mfccMinFreq, init.mfccMaxFreq, init.frameSize, init.sampleRate);
+    const [mfccFrames, times] = analyzer.computeBufferMfcc(data.buffer, init.hopSize);
+    postMessage({
+      type: 'analysis',
+      data: {
+        mfccFrames, 
+        times,
+      }
+    })
+  }
+});
+
 
 class Mfcc {
   constructor(nbrBands, nbrCoefs, minFreq, maxFreq, frameSize, sampleRate) {
@@ -7,14 +30,13 @@ class Mfcc {
     this.maxFreq = maxFreq;
     this.frameSize = frameSize;
     this.sampleRate = sampleRate;
-    
+
     this.fft = new Fft('power', this.frameSize, this.frameSize, this.frameSize);
-    this.mel = new Mel(this.frameSize/2 + 1, this.nbrBands, true, 1, this.minFreq, this.maxFreq, this.sampleRate);
+    this.mel = new Mel(this.frameSize / 2 + 1, this.nbrBands, true, 1, this.minFreq, this.maxFreq, this.sampleRate);
     this.dct = new Dct(this.nbrCoefs, this.nbrBands);
   }
 
   get(data) {
-    //Computes MFCC of a frame
     const bins = this.fft.get(data);
     const melBands = this.mel.get(bins);
     const coefs = this.dct.get(melBands);
@@ -22,16 +44,15 @@ class Mfcc {
     return coefs;
   }
 
-  computeBufferMfcc(buffer, hopSize) {
+  computeBufferMfcc(channelData, hopSize) {
     console.log("analysing file");
     const mfccFrames = [];
     const times = [];
     const means = new Float32Array(this.nbrCoefs);
     const std = new Float32Array(this.nbrCoefs);
-    const channelData = buffer.getChannelData(0);
     const data = new Float32Array(this.frameSize);
 
-    for (let i = 0; i < buffer.length; i += hopSize) {
+    for (let i = 0; i < channelData.length; i += hopSize) {
       const frame = channelData.subarray(i, i + this.frameSize);
       for (let j = 0; j < frame.length; j++) {
         data[j] = frame[j];
@@ -46,7 +67,6 @@ class Mfcc {
         means[j] += cepsFrame[j];
       }
     }
-    // get means and std
     for (let j = 0; j < this.nbrCoefs; j++) {
       means[j] /= mfccFrames.length;
     }
@@ -61,7 +81,6 @@ class Mfcc {
       std[j] = Math.sqrt(std[j]);
     }
 
-    // normalize
     for (let i = 0; i < mfccFrames.length; i++) {
       for (let j = 0; j < this.nbrCoefs; j++) {
         mfccFrames[i][j] = (mfccFrames[i][j] - means[j]) / std[j];
@@ -79,7 +98,7 @@ class Dct {
 
     this.weightMatrix = getDctWeights(order, nbrBands);
 
-   
+
   }
 
   get(data) {
@@ -101,16 +120,18 @@ class Dct {
 }
 
 function getDctWeights(order, N) {
-  var type = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'htk';
-
   var weights = new Float32Array(N * order);
   var piOverN = Math.PI / N;
   var scale0 = 1 / Math.sqrt(2);
   var scale = Math.sqrt(2 / N);
 
   for (var k = 0; k < order; k++) {
-    var s = k === 0 ? scale0 * scale : scale;
-    // const s = scale; // rta doesn't apply k=0 scaling
+    let s;
+    if (k === 0) {
+      s = scale0 * scale;
+    } else {
+      s = scale;
+    }
 
     for (var n = 0; n < N; n++) {
       weights[k * N + n] = s * Math.cos(k * (n + 0.5) * piOverN);
@@ -152,7 +173,7 @@ class Mel {
 
       for (var j = 0; j < weights.length; j++) {
         value += weights[j] * data[startIndex + j];
-      } // apply same logic as in PiPoBands
+      } 
       if (scale !== 1) value *= scale;
 
       if (this.log) {
@@ -177,52 +198,40 @@ function melToHertzHtk(freqMel) {
 }
 
 function getMelBandWeights(nbrBins, nbrBands, sampleRate, minFreq, maxFreq) {
-  var type = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 'htk';
-
   var hertzToMel = null;
   var melToHertz = null;
-  var minMel = void 0;
-  var maxMel = void 0;
+  var minMel = undefined;
+  var maxMel = undefined;
 
-  if (type === 'htk') {
-    hertzToMel = hertzToMelHtk;
-    melToHertz = melToHertzHtk;
-    minMel = hertzToMel(minFreq);
-    maxMel = hertzToMel(maxFreq);
-  } else {
-    throw new Error('Invalid mel band type: "' + type + '"');
-  }
+  hertzToMel = hertzToMelHtk;
+  melToHertz = melToHertzHtk;
+  minMel = hertzToMel(minFreq);
+  maxMel = hertzToMel(maxFreq);
 
   var melBandDescriptions = new Array(nbrBands);
-  // center frequencies of Fft bins
   var fftFreqs = new Float32Array(nbrBins);
-  // center frequencies of mel bands - uniformly spaced in mel domain between
-  // limits, there are 2 more frequencies than the actual number of filters in
-  // order to calculate the slopes
   var filterFreqs = new Float32Array(nbrBands + 2);
 
   var fftSize = (nbrBins - 1) * 2;
-  // compute bins center frequencies
   for (var i = 0; i < nbrBins; i++) {
     fftFreqs[i] = sampleRate * i / fftSize;
   } for (var _i = 0; _i < nbrBands + 2; _i++) {
     filterFreqs[_i] = melToHertz(minMel + _i / (nbrBands + 1) * (maxMel - minMel));
-  } // loop throught filters
+  }
   for (var _i2 = 0; _i2 < nbrBands; _i2++) {
     var minWeightIndexDefined = 0;
 
     var description = {
       startIndex: null,
       centerFreq: null,
-      weights: []
+      weights: [],
+    };
 
-      // define contribution of each bin for the filter at index (i + 1)
-      // do not process the last spectrum component (Nyquist)
-    }; for (var j = 0; j < nbrBins - 1; j++) {
+    for (var j = 0; j < nbrBins - 1; j++) {
       var posSlopeContrib = (fftFreqs[j] - filterFreqs[_i2]) / (filterFreqs[_i2 + 1] - filterFreqs[_i2]);
 
       var negSlopeContrib = (filterFreqs[_i2 + 2] - fftFreqs[j]) / (filterFreqs[_i2 + 2] - filterFreqs[_i2 + 1]);
-      // lowerSlope and upper slope intersect at zero and with each other
+
       var contribution = Math.max(0, Math.min(posSlopeContrib, negSlopeContrib));
 
       if (contribution > 0) {
@@ -230,18 +239,14 @@ function getMelBandWeights(nbrBins, nbrBands, sampleRate, minFreq, maxFreq) {
           description.startIndex = j;
           description.centerFreq = filterFreqs[_i2 + 1];
         }
-
         description.weights.push(contribution);
       }
     }
 
-    // empty filter
     if (description.startIndex === null) {
       description.startIndex = 0;
       description.centerFreq = 0;
     }
-
-    // @todo - do some scaling for Slaney-style mel
     melBandDescriptions[_i2] = description;
   }
 
@@ -249,13 +254,13 @@ function getMelBandWeights(nbrBins, nbrBands, sampleRate, minFreq, maxFreq) {
 }
 
 class Fft {
-  constructor(mode, frameSize, fftSize, windowSize){
+  constructor(mode, frameSize, fftSize, windowSize) {
     this.mode = mode;
     this.frameSize = frameSize;
     this.fftSize = fftSize;
     this.windowSize = windowSize;
     this.window = new Float32Array(this.windowSize);
-    this.normCoefs = { linear: 0, power: 0};
+    this.normCoefs = { linear: 0, power: 0 };
 
     hannWindow(this.window, windowSize, this.normCoefs);
 
@@ -265,14 +270,14 @@ class Fft {
   }
 
   get(data) {
-    const outData = new Float32Array(this.fftSize/2 + 1);
+    const outData = new Float32Array(this.fftSize / 2 + 1);
 
     for (var i = 0; i < this.windowSize; i++) {
       this.real[i] = data[i] * this.window[i] * this.normCoefs.power;
       this.imag[i] = 0;
     }
 
-    // if real is bigger than input signal, fill with zeros
+
     for (var _i = this.windowSize; _i < this.fftSize; _i++) {
       this.real[_i] = 0;
       this.imag[_i] = 0;
@@ -283,17 +288,17 @@ class Fft {
     if (this.mode === 'magnitude') {
       var norm = 1 / this.fftSize;
 
-      // DC index
+
       var realDc = this.real[0];
       var imagDc = this.imag[0];
       outData[0] = sqrt(realDc * realDc + imagDc * imagDc) * norm;
 
-      // Nquyst index
+
       var realNy = this.real[this.fftSize / 2];
       var imagNy = this.imag[this.fftSize / 2];
       outData[this.fftSize / 2] = sqrt(realNy * realNy + imagNy * imagNy) * norm;
 
-      // power spectrum
+
       for (var _i2 = 1, j = this.fftSize - 1; _i2 < this.fftSize / 2; _i2++, j--) {
         var real = 0.5 * (this.real[_i2] + this.real[j]);
         var imag = 0.5 * (this.imag[_i2] - this.imag[j]);
@@ -303,17 +308,17 @@ class Fft {
     } else if (this.mode === 'power') {
       var _norm = 1 / (this.fftSize * this.fftSize);
 
-      // DC index
+
       var _realDc = this.real[0];
       var _imagDc = this.imag[0];
       outData[0] = (_realDc * _realDc + _imagDc * _imagDc) * _norm;
 
-      // Nquyst index
+
       var _realNy = this.real[this.fftSize / 2];
       var _imagNy = this.imag[this.fftSize / 2];
       outData[this.fftSize / 2] = (_realNy * _realNy + _imagNy * _imagNy) * _norm;
 
-      // power spectrum
+ 
       for (var _i3 = 1, _j = this.fftSize - 1; _i3 < this.fftSize / 2; _i3++, _j--) {
         var _real = 0.5 * (this.real[_i3] + this.real[_j]);
         var _imag = 0.5 * (this.imag[_i3] - this.imag[_j]);
@@ -333,7 +338,7 @@ class FftNayuki {
 
     for (var i = 0; i < 32; i++) {
       if (1 << i == n) {
-        this.levels = i; // Equal to log2(n)
+        this.levels = i; 
       }
     }
 
@@ -348,21 +353,11 @@ class FftNayuki {
       this.cosTable[i] = Math.cos(2 * Math.PI * i / n);
       this.sinTable[i] = Math.sin(2 * Math.PI * i / n);
     }
-  }  
+  }
 
-  /*
-   * Computes the discrete Fourier transform (DFT) of the given complex vector,
-   * storing the result back into the vector.
-   * The vector's length must be equal to the size n that was passed to the
-   * object constructor, and this must be a power of 2. Uses the Cooley-Tukey
-   * decimation-in-time radix-2 algorithm.
-   *
-   * @private
-   */
   forward(real, imag) {
     var n = this.n;
 
-    // Bit-reversed addressing permutation
     for (var i = 0; i < n; i++) {
       var j = reverseBits(i, this.levels);
 
@@ -376,7 +371,6 @@ class FftNayuki {
       }
     }
 
-    // Cooley-Tukey decimation-in-time radix-2 Fft
     for (var size = 2; size <= n; size *= 2) {
       var halfsize = size / 2;
       var tablestep = n / size;
@@ -393,8 +387,6 @@ class FftNayuki {
       }
     }
 
-    // Returns the integer whose value is the reverse of the lowest 'bits'
-    // bits of the integer 'x'.
     function reverseBits(x, bits) {
       var y = 0;
 
@@ -407,16 +399,6 @@ class FftNayuki {
     }
   };
 
-  /*
-   * Computes the inverse discrete Fourier transform (IDFT) of the given complex
-   * vector, storing the result back into the vector.
-   * The vector's length must be equal to the size n that was passed to the
-   * object constructor, and this must be a power of 2. This is a wrapper
-   * function. This transform does not perform scaling, so the inverse is not
-   * a true inverse.
-   *
-   * @private
-   */
   inverse(real, imag) {
     forward(imag, real);
   };
@@ -442,5 +424,3 @@ function hannWindow(buffer, size, normCoefs) {
 }
 
 
-
-module.exports = { Mfcc };

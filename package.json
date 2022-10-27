@@ -49,7 +49,8 @@
     "static-kdtree": "^1.0.2",
     "template-literal": "^1.0.3",
     "tempy": "^1.0.1",
-    "waves-masters": "^2.3.0"
+    "waves-masters": "^2.3.0",
+    "web-worker": "^1.2.0"
   },
   "devDependencies": {
     "@soundworks/template-build": "^3.1.0",

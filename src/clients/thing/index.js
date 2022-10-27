@@ -1,4 +1,6 @@
 import 'source-map-support/register.js';
+import fs from 'node:fs';
+import path from 'node:path';
 import { Client } from '@soundworks/core/client.js';
 import getConfig from '../../utils/getConfig.js';
 import { AudioContext } from 'node-web-audio-api';
@@ -7,8 +9,19 @@ import pluginSyncFactory from '@soundworks/plugin-sync/client';
 import pluginFilesystemFactory from '@soundworks/plugin-filesystem/client';
 // import pluginAudioBufferLoaderFactory from '@soundworks/plugin-audio-buffer-loader/client';
 import pluginCheckinFactory from '@soundworks/plugin-checkin/client';
-
 import ThingExperience from './ThingExperience.js';
+import Worker from 'web-worker';
+
+// let script = fs.readFileSync(path.join(process.cwd(), 'src', 'clients', 'thing', 'worker.js'));
+// script = script.toString().replace(/\n/g, '');
+
+// const worker = new Worker(`data:application/javascript,${script}`);
+
+// worker.addEventListener('message', e => {
+//   console.log(e.data)  // "hiya!"
+// });
+
+// worker.postMessage('hello');
 
 
 const audioContext = new AudioContext({ latencyHint: 'playback' });

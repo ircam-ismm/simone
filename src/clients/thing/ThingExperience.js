@@ -1,11 +1,12 @@
 import { AbstractExperience } from '@soundworks/core/client.js';
-import { OscillatorNode, GainNode } from 'node-web-audio-api';
 import decibelToLinear from './math/decibelToLinear.js';
-import Mfcc from './Mfcc.js';
 import createKDTree from 'static-kdtree';
 import { Scheduler } from 'waves-masters';
 import SynthEngineNode from './SynthEngineNode';
 import Loader from './LoaderNode.js'
+import fs from 'node:fs';
+import path from 'node:path';
+import Worker from 'web-worker';
 
 class ThingExperience extends AbstractExperience {
   constructor(client, config, audioContext) {
@@ -29,10 +30,48 @@ class ThingExperience extends AbstractExperience {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
+    this.analysisData = {
+      frameSize: this.frameSize,
+      hopSize: this.hopSize,
+      sampleRate: this.sampleRate,
+      mfccBands: this.mfccBands,
+      mfccCoefs: this.mfccCoefs,
+      mfccMinFreq: this.mfccMinFreq,
+      mfccMaxFreq: this.mfccMaxFreq,
+    }
   }
 
   async start() {
     super.start();
+
+    let script = fs.readFileSync(path.join(process.cwd(), 'src', 'utils', 'mfccWorker.js'));
+    script = script.toString().replace(/\n/g, '');
+
+    this.worker = new Worker(`data:application/javascript,${script}`);
+
+    this.worker.addEventListener('message', e => {
+      const { type, data } = e.data;
+      if (type === "message") {
+        console.log(data);
+      }
+      if (type === "analysis") {
+        const searchTree = createKDTree(data.mfccFrames);
+        console.log("Tree created")
+        this.synthEngine.setBuffer(this.currentSource);
+        this.synthEngine.setSearchSpace(searchTree, data.times);
+        this.participant.set({ sourceFileLoaded: true });
+      }
+    });
+
+    // this.worker.addEventListener('message', e => {
+    //   console.log(e.data);
+    // });
+
+    this.worker.postMessage({
+      type: 'message',
+      data: "hello",
+    });
+
 
     console.log(`> ${this.client.type} [${this.client.id}]`);
 
@@ -48,7 +87,7 @@ class ThingExperience extends AbstractExperience {
     });
 
     // Analyzer 
-    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
+    // this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
 
     // Synth
     this.playing = false; // whether or not sound is playing (this is controlled by omega)
@@ -88,12 +127,19 @@ class ThingExperience extends AbstractExperience {
 
         this.currentSource = buffer;
         if (buffer) {
-          const [mfccFrames, times] = this.mfcc.computeBufferMfcc(buffer, this.hopSize);
-          const searchTree = createKDTree(mfccFrames);
-          console.log("Tree created")
-          this.synthEngine.setBuffer(buffer);
-          this.synthEngine.setSearchSpace(searchTree, times);
-          this.participant.set({ sourceFileLoaded: true });
+          this.worker.postMessage({
+            type: 'analyze',
+            data: {
+              analysisInitData: this.analysisData,
+              buffer: buffer.getChannelData(0),
+            }
+          })
+          // const [mfccFrames, times] = this.mfcc.computeBufferMfcc(buffer, this.hopSize);
+          // const searchTree = createKDTree(mfccFrames);
+          // console.log("Tree created")
+          // this.synthEngine.setBuffer(buffer);
+          // this.synthEngine.setSearchSpace(searchTree, times);
+          // this.participant.set({ sourceFileLoaded: true });
         }
       }
       if ('volume' in updates) {
