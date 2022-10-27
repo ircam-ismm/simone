@@ -90,20 +90,19 @@ class ThingExperience extends AbstractExperience {
     // this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
 
     // Synth
-    this.playing = false; // whether or not sound is playing (this is controlled by omega)
+    // this.playing = false; // whether or not sound is playing (this is controlled by omega)
 
     const getTimeFunction = () => this.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
     this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sampleRate;
-    this.synthData = []
-    this.synthEngine = new SynthEngineNode(this.audioContext, this.synthData, this.grainPeriod, this.grainDuration, this.sampleRate);
+    this.synthEngine = new SynthEngineNode(this.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
     this.synthEngine.connect(this.audioContext.destination);
     this.scheduler.add(this.synthEngine, this.audioContext.currentTime);
 
     this.participant.subscribe(async updates => {
       if ('mosaicingActive' in updates) {
-        this.playing = updates.mosaicingActive;
+        updates.mosaicingActive ? this.synthEngine.start() : this.synthEngine.stop();
       }
       if ('sourceFilename' in updates) { 
         const files = this.filesystem.get('soundbank').children;
@@ -133,13 +132,7 @@ class ThingExperience extends AbstractExperience {
               analysisInitData: this.analysisData,
               buffer: buffer.getChannelData(0),
             }
-          })
-          // const [mfccFrames, times] = this.mfcc.computeBufferMfcc(buffer, this.hopSize);
-          // const searchTree = createKDTree(mfccFrames);
-          // console.log("Tree created")
-          // this.synthEngine.setBuffer(buffer);
-          // this.synthEngine.setSearchSpace(searchTree, times);
-          // this.participant.set({ sourceFileLoaded: true });
+          });
         }
       }
       if ('volume' in updates) {
@@ -161,11 +154,9 @@ class ThingExperience extends AbstractExperience {
           if (playerName === 'Ω' || playerName === 'Ω*') {
             playerState.subscribe(updates => {
               if ('mosaicingData' in updates) {
-                if (this.playing) {
-                  //this is received as an object
-                  // console.log('receiving', updates.mosaicingSynth)
-                  this.synthData.push(Object.values(updates.mosaicingData));
-                }
+                //this is received as an object
+                // console.log('receiving', updates.mosaicingSynth)
+                this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
             });
           }

@@ -1,14 +1,15 @@
 import { AudioContext, GainNode, AudioBufferSourceNode} from 'node-web-audio-api';
 
 class SynthEngineNode {
-  constructor(audioContext, dataArray, grainPeriod, grainDuration, sampleRate) {
+  constructor(audioContext, grainPeriod, grainDuration, sampleRate) {
     this.audioContext = audioContext;
-    this.dataArray = dataArray;
     this.grainPeriod = grainPeriod;
     this.grainDuration = grainDuration;
     this.sampleRate = sampleRate;
 
     this.jitter = 0.004;
+
+    this.playing = false;
 
     this._detune = 0;
     this.output = new GainNode(this.audioContext);
@@ -54,8 +55,8 @@ class SynthEngineNode {
     this.grainPeriod = grainPeriod;
   }
   
-  pushData(x) {
-    this.nextData.push(x);
+  postData(x) {
+    this.currGrain = x;
   }
 
   connect(dest) {
@@ -63,18 +64,19 @@ class SynthEngineNode {
   }
 
   start() {
+    this.playing = true;
   }
 
   stop() {
+    this.playing = false;
   }
 
   advanceTime(time) {
     time = Math.max(time, this.audioContext.currentTime);
     // playing sound part
     // get closest grain index from kdTree
-    const desc = this.dataArray.shift();
-    if (desc) {
-      const target = this.kdTree.nn(desc);
+    if (this.currGrain && this.playing) {
+      const target = this.kdTree.nn(this.currGrain);
       const timeOffset = this.times[target];
 
       const rand = Math.random() * this.jitter;
@@ -96,8 +98,7 @@ class SynthEngineNode {
 
       if (this.advanceCallback) {
         this.advanceCallback(target / this.times.length);
-      }
-      
+      }    
     }
     
     return time + this.grainPeriod;
