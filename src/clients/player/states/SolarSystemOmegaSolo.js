@@ -10,6 +10,7 @@ import AnalyzerEngine from '../AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
+import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
 export default class SolarSystemOmegaSolo extends State {
   constructor(name, context) {
@@ -26,6 +27,15 @@ export default class SolarSystemOmegaSolo extends State {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
+    this.analysisData = {
+      frameSize: this.frameSize,
+      hopSize: this.hopSize,
+      sampleRate: this.sampleRate,
+      mfccBands: this.mfccBands,
+      mfccCoefs: this.mfccCoefs,
+      mfccMinFreq: this.mfccMinFreq,
+      mfccMaxFreq: this.mfccMaxFreq,
+    };
 
     // Waveform display
     this.waveformWidth = 600;
@@ -63,8 +73,31 @@ export default class SolarSystemOmegaSolo extends State {
       this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
-    // Analyzer 
-    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
+    // MFCC analyzer worker
+    const workerBlob = new Blob([mfccWorkerString], { type: 'text/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    this.worker = new Worker(workerUrl);
+
+    this.worker.addEventListener('message', e => {
+      const { type, data } = e.data;
+      if (type === "message") {
+        console.log(data);
+      }
+      if (type === "analyze-target") {
+        this.analyzerEngine.setTarget(this.currentTarget);
+        this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
+        this.targetDisplay.setBuffer(this.currentTarget);
+        // setting looping section back to 0
+        this.targetDisplay.setSelectionStartTime(0);
+        this.targetDisplay.setSelectionLength(this.currentTarget.duration);
+        this.analyzerEngine.start();
+      }
+    });
+
+    this.worker.postMessage({
+      type: 'message',
+      data: "worker says hello",
+    });
 
     // Synth (does not produce sound here)
     const getTimeFunction = () => this.context.sync.getLocalTime();
@@ -113,16 +146,16 @@ export default class SolarSystemOmegaSolo extends State {
   setTargetFile(targetBuffer) {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
-      const analysis = this.mfcc.computeBufferMfcc(targetBuffer, this.hopSize);
-      this.analyzerEngine.setTarget(targetBuffer);
-      this.analyzerEngine.setNorm(analysis[2], analysis[3]);
-      // this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
-      this.targetDisplay.setBuffer(targetBuffer);
-      this.targetDisplay.setSelectionStartTime(0);
-      this.targetDisplay.setSelectionLength(targetBuffer.duration);
-      this.analyzerEngine.start();
+      this.worker.postMessage({
+        type: 'analyze-target',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: targetBuffer.getChannelData(0),
+        }
+      });
     }
   }
+
 
   transportRecordFile(state) {
     switch (state) {
@@ -292,6 +325,17 @@ export default class SolarSystemOmegaSolo extends State {
                       width="300"
                       display-number
                       @input="${e => state.set({ detune: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  <div style="margin:10px">
+                    grain per.
+                    <sc-slider
+                      min="0.01"
+                      max="0.1"
+                      value="${state.get('grainPeriod')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ grainPeriod: e.detail.value })}"
                     ></sc-slider>
                   </div>
                   <div style="margin:10px">

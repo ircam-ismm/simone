@@ -6,7 +6,6 @@ class AnalyzerEngine {
     // where analyzed data will be sent. Either an array (in local mode) 
     // or a shared state (in remote mode)
     this.dataDestination = dataDestination;
-    this.mode = Array.isArray(dataDestination) ? 'local' : 'remote';
     this.period = period;
     this.frameSize = Math.pow(2, Math.round(Math.log2(frameSize))); // clamp to nearest power of 2
     this.sampleRate = sampleRate;
@@ -76,12 +75,9 @@ class AnalyzerEngine {
       for (let j = 0; j < 12; j++) {
         grainMfcc[j] = (grainMfcc[j] - this.means[j]) / this.std[j];
       }
-      if (this.mode === 'remote') {
-        this.dataDestination.set({ mosaicingData: grainMfcc });
-      } else {
-        this.dataDestination.push(grainMfcc);
-      }
 
+      this.dataDestination.set({ mosaicingData: grainMfcc });
+      
       if (this.advanceCallback) {
         this.advanceCallback(this.transportTime / this.target.duration);
       }

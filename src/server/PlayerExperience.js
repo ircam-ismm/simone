@@ -11,6 +11,7 @@ class PlayerExperience extends AbstractExperience {
     this.checkin = this.require('checkin');
     this.logger = this.require('logger');
 
+    this.fs = require('fs');
   }
 
   start() {

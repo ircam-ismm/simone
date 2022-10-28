@@ -44,7 +44,7 @@ class ThingExperience extends AbstractExperience {
   async start() {
     super.start();
 
-    let script = fs.readFileSync(path.join(process.cwd(), 'src', 'utils', 'mfccWorker.js'));
+    let script = fs.readFileSync(path.join(process.cwd(), 'src', 'clients', 'utils', 'mfcc.worker.js'));
     script = script.toString().replace(/\n/g, '');
 
     this.worker = new Worker(`data:application/javascript,${script}`);
@@ -54,7 +54,7 @@ class ThingExperience extends AbstractExperience {
       if (type === "message") {
         console.log(data);
       }
-      if (type === "analysis") {
+      if (type === "analyze-source") {
         const searchTree = createKDTree(data.mfccFrames);
         console.log("Tree created")
         this.synthEngine.setBuffer(this.currentSource);
@@ -63,13 +63,9 @@ class ThingExperience extends AbstractExperience {
       }
     });
 
-    // this.worker.addEventListener('message', e => {
-    //   console.log(e.data);
-    // });
-
     this.worker.postMessage({
       type: 'message',
-      data: "hello",
+      data: "worker says hello",
     });
 
 
@@ -86,12 +82,7 @@ class ThingExperience extends AbstractExperience {
       name: name
     });
 
-    // Analyzer 
-    // this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
-
     // Synth
-    // this.playing = false; // whether or not sound is playing (this is controlled by omega)
-
     const getTimeFunction = () => this.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
     this.grainPeriod = 0.05;

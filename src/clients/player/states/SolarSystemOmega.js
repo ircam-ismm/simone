@@ -10,6 +10,7 @@ import AnalyzerEngine from '../AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
+import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
 export default class SolarSystemOmega extends State {
   constructor(name, context) {
@@ -26,6 +27,15 @@ export default class SolarSystemOmega extends State {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
+    this.analysisData = {
+      frameSize: this.frameSize,
+      hopSize: this.hopSize,
+      sampleRate: this.sampleRate,
+      mfccBands: this.mfccBands,
+      mfccCoefs: this.mfccCoefs,
+      mfccMinFreq: this.mfccMinFreq,
+      mfccMaxFreq: this.mfccMaxFreq,
+    };
 
     // Waveform display
     this.waveformWidth = 600;
@@ -71,8 +81,32 @@ export default class SolarSystemOmega extends State {
       this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
-    // Analyzer 
-    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
+    // MFCC analyzer worker
+    const workerBlob = new Blob([mfccWorkerString], { type: 'text/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    this.worker = new Worker(workerUrl);
+
+    this.worker.addEventListener('message', e => {
+      const { type, data } = e.data;
+      if (type === "message") {
+        console.log(data);
+      }
+      if (type === "analyze-target") {
+        this.analyzerEngine.setTarget(this.currentTarget);
+        this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
+        this.targetDisplay.setBuffer(this.currentTarget);
+        // setting looping section back to 0
+        this.targetDisplay.setSelectionStartTime(0);
+        this.targetDisplay.setSelectionLength(this.currentTarget.duration);
+        this.analyzerEngine.start();
+      }
+    });
+
+    this.worker.postMessage({
+      type: 'message',
+      data: "worker says hello",
+    });
+
 
     // Synth (does not produce sound here)
     const getTimeFunction = () => this.context.sync.getLocalTime();
@@ -83,7 +117,7 @@ export default class SolarSystemOmega extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 0.05;
+    this.grainPeriod = this.context.participant.get('grainPeriod');
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.frameSize, this.sampleRate);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     
@@ -121,14 +155,13 @@ export default class SolarSystemOmega extends State {
   setTargetFile(targetBuffer) {
     if (targetBuffer) {
       this.currentTarget = targetBuffer;
-      const analysis = this.mfcc.computeBufferMfcc(targetBuffer, this.hopSize);
-      this.analyzerEngine.setTarget(targetBuffer);
-      this.analyzerEngine.setNorm(analysis[2], analysis[3]);
-      // this.mosaicingSynth.setLoopLimits(0, targetBuffer.duration);
-      this.targetDisplay.setBuffer(targetBuffer);
-      this.targetDisplay.setSelectionStartTime(0);
-      this.targetDisplay.setSelectionLength(targetBuffer.duration);
-      this.analyzerEngine.start();
+      this.worker.postMessage({
+        type: 'analyze-target',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: targetBuffer.getChannelData(0),
+        }
+      });
     }
   }
 

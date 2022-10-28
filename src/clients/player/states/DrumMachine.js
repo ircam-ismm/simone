@@ -4,7 +4,6 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
-import Mfcc from '../Mfcc.js';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -13,6 +12,7 @@ import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
+import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
 export default class DrumMachine extends State {
   constructor(name, context) {
@@ -29,6 +29,15 @@ export default class DrumMachine extends State {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
+    this.analysisData = {
+      frameSize: this.frameSize,
+      hopSize: this.hopSize,
+      sampleRate: this.sampleRate,
+      mfccBands: this.mfccBands,
+      mfccCoefs: this.mfccCoefs,
+      mfccMinFreq: this.mfccMinFreq,
+      mfccMaxFreq: this.mfccMaxFreq,
+    }
 
     // Mosaicing
     this.bpm = 120; 
@@ -64,6 +73,11 @@ export default class DrumMachine extends State {
         const $messageBox = document.getElementById("messageBox");
         $messageBox.innerText = updates.message;
       }
+      if ('mosaicingData' in updates) {
+        //this is received as an object
+        // console.log('receiving', updates.mosaicingSynth)
+        this.synthEngine.postData(Object.values(updates.mosaicingData));
+      }
     });
 
     // Waveforms display
@@ -80,18 +94,46 @@ export default class DrumMachine extends State {
       this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
-    // MFCC analyzer 
-    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
+    // MFCC analyzer worker
+    const workerBlob = new Blob([mfccWorkerString], { type: 'text/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    this.worker = new Worker(workerUrl);
+
+    this.worker.addEventListener('message', e => {
+      const { type, data } = e.data;
+      if (type === "message") {
+        console.log(data);
+      }
+      if (type === "analyze-source") {
+        const searchTree = createKDTree(data.mfccFrames);
+        console.log("Tree created")
+        this.synthEngine.setBuffer(this.currentSource);
+        this.synthEngine.setSearchSpace(searchTree, data.times);
+        this.sourceDisplay.setBuffer(this.currentSource);
+      }
+      if (type === "analyze-target") {
+        this.analyzerEngine.setTarget(this.currentTarget);
+        this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
+        this.targetDisplay.setBuffer(this.currentTarget);
+        // setting looping section back to 0
+        this.targetDisplay.setSelectionStartTime(0);
+        this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sampleRate);
+      }
+    });
+
+    this.worker.postMessage({
+      type: 'message',
+      data: "worker says hello",
+    });
 
     // Mosaicing synth
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
-    this.grainPeriod = 0.05;
-    this.grainDuration = this.frameSize / this.sampleRate;
-    this.sharedArray = []; 
-    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
-    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
+    this.grainPeriod = this.context.participant.get('grainPeriod');
+    this.grainDuration = this.context.participant.get('grainDuration');
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.frameSize, this.sampleRate);
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
     this.synthEngine.connect(this.context.globalVolume);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
@@ -118,25 +160,26 @@ export default class DrumMachine extends State {
     console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
-      const [mfccFrames, times] = this.mfcc.computeBufferMfcc(sourceBuffer, this.hopSize);
-      const searchTree = createKDTree(mfccFrames);
-      console.log("Tree created")
-      this.synthEngine.setBuffer(sourceBuffer);
-      this.synthEngine.setSearchSpace(searchTree, times);
-      this.sourceDisplay.setBuffer(sourceBuffer);
+      this.worker.postMessage({
+        type: 'analyze-source',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: sourceBuffer.getChannelData(0),
+        }
+      });
     }
   }
 
   setTargetFile(targetBuffer) {
-    this.currentTarget = targetBuffer;
     if (targetBuffer) {
-      const analysis = this.mfcc.computeBufferMfcc(targetBuffer, this.hopSize);
-      this.analyzerEngine.setTarget(targetBuffer);
-      this.analyzerEngine.setNorm(analysis[2], analysis[3]); // values for normalization of data
-      this.targetDisplay.setBuffer(targetBuffer);
-      // setting looping section back to 0
-      this.targetDisplay.setSelectionStartTime(0);
-      this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sampleRate);
+      this.currentTarget = targetBuffer;
+      this.worker.postMessage({
+        type: 'analyze-target',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: targetBuffer.getChannelData(0),
+        }
+      });
     }
   }
 
@@ -193,11 +236,15 @@ export default class DrumMachine extends State {
         const currentSyncTime = this.context.sync.getSyncTime();
         const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
         const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => this.analyzerEngine.start(), nextStartTimeLocal);
+        this.scheduler.defer(() => {
+          this.analyzerEngine.start();
+          this.synthEngine.start();
+        }, nextStartTimeLocal);
         this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
+        this.synthEngine.stop();
         this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }

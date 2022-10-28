@@ -15,6 +15,6 @@
     },
   },
 
-  system: 'solar-system',
+  system: 'clone-playing',
   nPlayers: 4,
 }

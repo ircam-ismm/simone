@@ -12,6 +12,7 @@ import SynthEngine from '../SynthEngine';
 import { Scheduler } from 'waves-masters';
 import State from './State.js';
 import { html } from 'lit/html.js';
+import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
 export default class SolarSystemSatellite extends State {
   constructor(name, context) {
@@ -28,6 +29,15 @@ export default class SolarSystemSatellite extends State {
     this.mfccCoefs = 12;
     this.mfccMinFreq = 50;
     this.mfccMaxFreq = 8000;
+    this.analysisData = {
+      frameSize: this.frameSize,
+      hopSize: this.hopSize,
+      sampleRate: this.sampleRate,
+      mfccBands: this.mfccBands,
+      mfccCoefs: this.mfccCoefs,
+      mfccMinFreq: this.mfccMinFreq,
+      mfccMaxFreq: this.mfccMaxFreq,
+    }
 
     // Waveform display
     this.waveformWidth = 600;
@@ -40,11 +50,29 @@ export default class SolarSystemSatellite extends State {
     // Waveform display
     this.sourceDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, false, true);
 
-    // Analyzer 
-    this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
+    // MFCC analyzer worker
+    const workerBlob = new Blob([mfccWorkerString], { type: 'text/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    this.worker = new Worker(workerUrl);
 
-    // Synth
-    this.playing = false; // whether or not sound is playing (this is controlled by omega)
+    this.worker.addEventListener('message', e => {
+      const { type, data } = e.data;
+      if (type === "message") {
+        console.log(data);
+      }
+      if (type === "analyze-source") {
+        const searchTree = createKDTree(data.mfccFrames);
+        console.log("Tree created")
+        this.synthEngine.setBuffer(this.currentSource);
+        this.synthEngine.setSearchSpace(searchTree, data.times);
+        this.sourceDisplay.setBuffer(this.currentSource);
+      }
+    });
+
+    this.worker.postMessage({
+      type: 'message',
+      data: "worker says hello",
+    });
 
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
@@ -54,10 +82,9 @@ export default class SolarSystemSatellite extends State {
     // this player's period would be longer than the other players and then data
     // sent by omega would then start accumulating without being processed fast enough
     // leading to progressive desynchronization of this player. 
-    this.grainPeriod = 0.05;
-    this.grainDuration = this.frameSize / this.sampleRate;
-    this.synthData = []
-    this.synthEngine = new SynthEngine(this.context.audioContext, this.synthData, this.grainPeriod, this.grainDuration, this.sampleRate);
+    this.grainPeriod = this.context.participant.get('grainPeriod');
+    this.grainDuration = this.context.participant.get('grainDuration');
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
     this.synthEngine.connect(this.context.globalVolume);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
@@ -68,7 +95,7 @@ export default class SolarSystemSatellite extends State {
 
     this.context.participant.subscribe(updates => {
       if ('mosaicingActive' in updates) {
-        this.playing = updates.mosaicingActive;
+        updates.mosaicingActive ? this.synthEngine.start() : this.synthEngine.stop();
       }
       if ('sourceFilename' in updates) {
         this.setSourceFile(this.context.audioBufferLoader.data[updates.sourceFilename]);
@@ -79,6 +106,9 @@ export default class SolarSystemSatellite extends State {
       }
       if ('detune' in updates) {
         this.synthEngine.detune = updates.detune * 100;
+      }
+      if ('grainPeriod' in updates) {
+        this.synthEngine.setGrainPeriod(updates.grainPeriod);
       }
       if ('grainDuration' in updates) {
         this.synthEngine.setGrainDuration(updates.grainDuration);
@@ -99,11 +129,9 @@ export default class SolarSystemSatellite extends State {
           if (playerName === 'Ω' || playerName === 'Ω*') {
             playerState.subscribe(updates => {
               if ('mosaicingData' in updates) {
-                if (this.playing) {
-                  //this is received as an object
-                  // console.log('receiving', updates.mosaicingSynth)
-                  this.synthData.push(Object.values(updates.mosaicingData));
-                }
+                //this is received as an object
+                // console.log('receiving', updates.mosaicingSynth)
+                this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
             });
           }
@@ -115,6 +143,7 @@ export default class SolarSystemSatellite extends State {
     this.currentValues = {
       volume: this.context.participant.get('volume'),
       detune: this.context.participant.get('detune'),
+      grainPeriod: this.context.participant.get('grainPeriod'),
       grainDuration: this.context.participant.get('grainDuration'),
     };
     this.previousValues = {...this.currentValues};
@@ -125,12 +154,13 @@ export default class SolarSystemSatellite extends State {
     console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
-      const [mfccFrames, times] = this.mfcc.computeBufferMfcc(sourceBuffer, this.hopSize);
-      const searchTree = createKDTree(mfccFrames);
-      console.log("Tree created")
-      this.synthEngine.setBuffer(sourceBuffer);
-      this.synthEngine.setSearchSpace(searchTree, times);
-      this.sourceDisplay.setBuffer(sourceBuffer);
+      this.worker.postMessage({
+        type: 'analyze-source',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: sourceBuffer.getChannelData(0),
+        }
+      });
     }
   }
 
@@ -166,6 +196,10 @@ export default class SolarSystemSatellite extends State {
       case 'detune':
         this.synthEngine.detune = temp * 100;
         this.context.participant.set({ detune: temp });
+        break;
+      case 'grainPeriod':
+        this.synthEngine.setGrainPeriod(temp);
+        this.context.participant.set({ grainPeriod: temp });
         break;
       case 'grainDuration':
         this.synthEngine.setGrainDuration(temp);
@@ -302,6 +336,34 @@ export default class SolarSystemSatellite extends State {
                 left: 420px;
               "
             >
+              <h3>grain period</h3>
+              <sc-slider
+                min="0.01"
+                max="0.1"
+                value="${this.context.participant.get('grainPeriod')}"
+                width="300"
+                display-number
+                @input="${e => {
+                  this.synthEngine.setGrainPeriod(e.detail.value);
+                  this.context.participant.set({ grainPeriod: e.detail.value });
+                }}"
+                @change="${e => {
+                  if (e.detail.value !== this.currentValues.grainPeriod) {
+                    this.previousValues.grainPeriod = this.currentValues.grainPeriod;
+                    this.currentValues.grainPeriod = e.detail.value;
+                  }
+                  const now = Date.now();
+                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
+                }}"
+              ></sc-slider>
+
+              <sc-button
+                width="90"
+                text="prev value"
+                @input="${e => this.switchValueSlider('grainPeriod')}"
+              >
+              </sc-button>
+
               <h3>grain duration</h3>
               <sc-slider
                 min="0.02"

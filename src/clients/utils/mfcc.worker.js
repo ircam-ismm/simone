@@ -6,18 +6,20 @@ addEventListener('message', e => {
       data,
     });
   }
-  if (type === 'analyze') {
+  if (type === 'analyze-source' || type === 'analyze-target') {
     console.log('begin analysis');
     const init = data.analysisInitData;
     const analyzer = new Mfcc(init.mfccBands, init.mfccCoefs, init.mfccMinFreq, init.mfccMaxFreq, init.frameSize, init.sampleRate);
-    const [mfccFrames, times] = analyzer.computeBufferMfcc(data.buffer, init.hopSize);
+    const [mfccFrames, times, means, std] = analyzer.computeBufferMfcc(data.buffer, init.hopSize);
     postMessage({
-      type: 'analysis',
+      type,
       data: {
         mfccFrames, 
         times,
+        means, 
+        std,
       }
-    })
+    });
   }
 });
 
