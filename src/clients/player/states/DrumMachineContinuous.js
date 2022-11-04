@@ -14,14 +14,14 @@ import State from './State.js';
 import { html } from 'lit/html.js';
 import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
-export default class ClonePlaying extends State {
+export default class DrumMachineContinuous extends State {
   constructor(name, context) {
     super(name, context);
 
     this.currentSource = null;
     this.currentTarget = null;
 
-    // Parameters for audio analysis
+    // parameters for audio analysis
     this.frameSize = 4096;
     this.hopSize = 512;
     this.sampleRate = this.context.audioContext.sampleRate;
@@ -39,30 +39,43 @@ export default class ClonePlaying extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     }
 
+    // Mosaicing
+    this.bpm = 120; 
+    this.nFramesBeat = 8; // initial length of the looping section (in number of frames)
+    this.selectionLength = this.nFramesBeat*this.frameSize/44100;
+    this.maxNFramesBeat = 64 // maximum length of looping section (in n of frames)
+
     // Waveform display
     this.waveformWidth = 800;
     this.waveformHeightSource = 200;
     this.waveformHeightTarget = 150;
-
-    this.targetPlayerState = this.context.participant;
   }
 
   async enter() {
+    this.chunks = [];
+
     // Microphone handling
     this.context.mediaRecorder.addEventListener('dataavailable', (e) => {
-      if (e.data.size > 0) {
-        this.context.fileReader.readAsArrayBuffer(e.data);
+      if (e.data.size > 0) {  
+        console.log(e.data)  
+        const newData = e.data;
+        this.context.fileReader.readAsArrayBuffer(newData);
       };
     });
 
     this.context.fileReader.addEventListener('loadend', async () => {
-      const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
-      this.recordedBuffer = audioBuffer;
-      this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
+      console.log(this.context.fileReader.result);
+      // const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
+      // console.log(audioBuffer);
+      // this.recordedBuffer = audioBuffer;
+      // this.recorderDisplay.setBuffer(audioBuffer);
+      // const now = Date.now();
+      // this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
+    this.context.mediaRecorder.start(1000);
+    // console.log(this.frameSize / this.sampleRate * 1000);
+    // setTimeout(() => this.context.mediaRecorder.stop(), this.frameSize / this.sampleRate * 1000);
     //
     this.context.participant.subscribe(updates => {
       if ("message" in updates) {
@@ -76,12 +89,12 @@ export default class ClonePlaying extends State {
       }
     });
 
-    // Waveform display
+    // Waveforms display
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidth, false, true);
-    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, true);
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, false);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, false, false);
 
-    // Callback for when selection on the display is modified
+    // Callback for when selection on the display is moved
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
       this.selectionStart = start;
       this.selectionEnd = end;
@@ -90,7 +103,7 @@ export default class ClonePlaying extends State {
       this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
-    // MFCC analyzer 
+    // MFCC analyzer worker
     const workerBlob = new Blob([mfccWorkerString], { type: 'text/javascript' });
     const workerUrl = URL.createObjectURL(workerBlob);
     this.worker = new Worker(workerUrl);
@@ -113,7 +126,7 @@ export default class ClonePlaying extends State {
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
         this.targetDisplay.setSelectionStartTime(0);
-        this.targetDisplay.setSelectionLength(this.currentTarget.duration);
+        this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sampleRate);
       }
     });
 
@@ -142,10 +155,18 @@ export default class ClonePlaying extends State {
       this.sourceDisplay.setCursorTime(this.currentSource.duration * sourcePosPct);
     });
 
-    // Fetching recording to use as a source sound from the server
-    const nPlayers = this.context.global.get('nPlayers');
-    const idSourceToGet = (this.context.checkinId + 1)%nPlayers;
-    const sourceBuffer = this.context.audioBufferLoader.data[`recording-player-${idSourceToGet}.wav`];
+    // Previous values sliders
+    this.currentValues = {
+      volume: this.context.participant.get('volume'),
+      detune: this.context.participant.get('detune'),
+      grainPeriod: this.context.participant.get('grainPeriod'),
+      grainDuration: this.context.participant.get('grainDuration'),
+    };
+    this.previousValues = {...this.currentValues};
+  } 
+
+  setSourceFile(sourceBuffer) {
+    console.log("loading source");
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
       this.worker.postMessage({
@@ -155,20 +176,8 @@ export default class ClonePlaying extends State {
           buffer: sourceBuffer.getChannelData(0),
         }
       });
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - set source file : recording-player-${idSourceToGet}.wav`);
     }
-
-    // Previous values sliders
-    this.currentValues = {
-      volume: this.context.participant.get('volume'),
-      detune: this.context.participant.get('detune'),
-      grainPeriod: this.context.participant.get('grainPeriod'),
-      grainDuration: this.context.participant.get('grainDuration'),
-    };
-    this.previousValues = { ...this.currentValues };
   }
-
 
   setTargetFile(targetBuffer) {
     if (targetBuffer) {
@@ -183,7 +192,9 @@ export default class ClonePlaying extends State {
     }
   }
 
+
   transportSourceFile(state) {
+    // callback for handling transport buttons on source sound display
     switch (state) {
       case 'play':
         this.sourcePlayerNode = new AudioBufferSourceNode(this.context.audioContext);
@@ -204,6 +215,7 @@ export default class ClonePlaying extends State {
   }
 
   transportRecordFile(state) {
+    // callback for handling transport buttons on transport sound display
     switch (state) {
       case 'play':
         this.recorderPlayerNode = new AudioBufferSourceNode(this.context.audioContext);
@@ -224,11 +236,19 @@ export default class ClonePlaying extends State {
   }
 
   transportMosaicing(state) {
+    // Callback for handling transport buttons for mosaicing
     const now = Date.now();
     switch (state) {
       case 'play':
-        this.analyzerEngine.start();
-        this.synthEngine.start();
+        // Mosaicing must start at a time synced with the other players
+        const beatLength = this.nFramesBeat * this.frameSize / this.sampleRate;
+        const currentSyncTime = this.context.sync.getSyncTime();
+        const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
+        const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
+        this.scheduler.defer(() => {
+          this.analyzerEngine.start();
+          this.synthEngine.start();
+        }, nextStartTimeLocal);
         this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
@@ -236,6 +256,29 @@ export default class ClonePlaying extends State {
         this.synthEngine.stop();
         this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
+    }
+  }
+
+  changeSelectionLength(type) {
+    // Callback for changing length of looping section (*2 or /2)
+    if (type === 'longer') {
+      const newLength = this.selectionLength * 2;
+      // New looping section must not go out of bounds and is cannot exceed max value
+      if (this.nFramesBeat * 2 <= this.maxNFramesBeat && this.selectionStart + newLength < this.currentTarget.duration) {
+        this.nFramesBeat *= 2;
+        this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
+        this.targetDisplay.setSelectionLength(this.selectionLength);
+        this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
+      }
+    } else {
+      // New looping section must not last less than a frame long
+      if (this.nFramesBeat / 2 >= 1) {
+        this.nFramesBeat /= 2;
+        this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
+        this.targetDisplay.setSelectionLength(this.selectionLength);
+        this.context.writer.write(`Set selection shorter. N frames per loop : ${this.nFramesBeat}`);
+      }
+
     }
   }
 
@@ -257,13 +300,14 @@ export default class ClonePlaying extends State {
         this.synthEngine.setGrainPeriod(temp);
         this.context.participant.set({ grainPeriod: temp });
         break;
-      case 'grainDuration':
+      case 'grainDuration': 
         this.synthEngine.setGrainDuration(temp);
         this.context.participant.set({ grainDuration: temp });
         break;
     }
     this.render();
   }
+
 
   render() {
     return html`
@@ -272,12 +316,33 @@ export default class ClonePlaying extends State {
         </div>
 
         <div style="padding-left: 20px; padding-right: 20px">
+          
           <div style="display: flex">
             <div>
               <h3>Target</h3>
 
               <div style="position: relative">
                 ${this.targetDisplay.render()}
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                  "
+                  width="40";
+                  text="*2"
+                  @input="${e => this.changeSelectionLength("longer")}"
+                ></sc-button>
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 55px;
+                  "
+                  width="40";
+                  text="/2"
+                  @input="${e => this.changeSelectionLength("smaller")}"
+                ></sc-button>
               </div>
 
               <div style="position: relative">
@@ -323,8 +388,6 @@ export default class ClonePlaying extends State {
             </div>
           </div>
 
-
-
           <div style="margin: 20px; padding: 20px; position: relative">
 
             <div>
@@ -347,6 +410,7 @@ export default class ClonePlaying extends State {
             >
               <h3>volume (dB)</h3>
               <sc-slider
+                id="slider-volume"
                 min="-60"
                 max="0"
                 value="${this.context.participant.get('volume')}"
@@ -354,7 +418,7 @@ export default class ClonePlaying extends State {
                 display-number
                 @input="${e => {
                   this.synthEngine.volume = decibelToLinear(e.detail.value);
-                  this.context.participant.set({ volume: e.detail.value });
+                  this.context.participant.set({volume: e.detail.value});
                 }}"
                 @change="${e => {
                   if (e.detail.value !== this.currentValues.volume) {
@@ -373,6 +437,7 @@ export default class ClonePlaying extends State {
 
               <h3>detune</h3>
               <sc-slider
+                id="slider-detune"
                 min="-24"
                 max="24"
                 value="${this.context.participant.get('detune')}"
@@ -411,6 +476,7 @@ export default class ClonePlaying extends State {
 
               <h3>grain period</h3>
               <sc-slider
+                id="slider-grainPeriod"
                 min="0.01"
                 max="0.1"
                 value="${this.context.participant.get('grainPeriod')}"
@@ -440,6 +506,7 @@ export default class ClonePlaying extends State {
 
               <h3>grain duration</h3>
               <sc-slider
+                id="slider-grainDuration"
                 min="0.02"
                 max="0.5"
                 value="${this.context.participant.get('grainDuration')}"
@@ -458,7 +525,7 @@ export default class ClonePlaying extends State {
                   this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                 }}"
               ></sc-slider>
-
+              
               <sc-button
                 width="90"
                 text="prev value"
@@ -469,8 +536,20 @@ export default class ClonePlaying extends State {
           </div>
 
           <h3>Source</h3>
+
+          <sc-file-tree
+            value="${JSON.stringify(this.context.soundbankTreeRender)}";
+            @input="${e => {
+              this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+              this.context.participant.set({ sourceFilename: e.detail.value.name });
+              const now = Date.now();
+              this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
+            }}"
+          ></sc-file-tree>
+
           <div style="
             display: inline;
+            margin: 20px;
             position: relative;"
           >
             ${this.sourceDisplay.render()}

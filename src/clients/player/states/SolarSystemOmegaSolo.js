@@ -185,7 +185,7 @@ export default class SolarSystemOmegaSolo extends State {
         </div>
 
         <div style="position: relative; padding-left: 20px; padding-right: 20px">
-          <h3>Target</h3>
+          <h3>target</h3>
 
           <div style="position: relative">
             ${this.targetDisplay.render()}
@@ -228,126 +228,145 @@ export default class SolarSystemOmegaSolo extends State {
             ></sc-button>
           </div>
 
+          <div>
+              <h3>global volume</h3>
+              <sc-slider
+                min="-60"
+                max="6"
+                value="0"
+                display-number
+                @input="${e => this.context.participant.set({ volume: e.detail.value})}"
+              ></sc-slider>
+          </div>
+
           <div
             style="
               position: absolute;
               top: 0px;
               left: ${this.waveformWidth + 40}px;
-              width: 400px;
+              width: 820px;
             "
           >
-            <h3>Players</h3>
+            <h3>players</h3>
 
             <div>
-              ${Object.entries(this.players).map(([name, state]) => {
+              ${Object.entries(this.players).map(([name, state], j) => {
                 return html`
-                  <div style="
-                      display: flex;
-                      justify-content: space-around;
-                      align-items: center;
-                      margin-bottom: 20px;
-                    "
-                  >
-                    <h2>
-                      ${name}
-                    </h2>
-
-                    <sc-transport
-                      buttons="[play, stop]"
-                      width="50"
-                      @change="${e => {
-                        if (e.detail.value === 'play') {
-                          state.set({ mosaicingActive: true });
-                          const now = Date.now();
-                          this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
-                        } else {
-                          state.set({ mosaicingActive: false });
-                          const now = Date.now();
-                          this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
-                        }
-                      }}"
-                    ></sc-transport>
-
-                    <select 
-                      style="
-                        width: 200px;
-                        height: 30px
+                <div style="
+                    position: absolute;
+                    top: ${Math.floor(j / 2) * 230 + 40}px;
+                    left: ${j%2 * 420}px;
+                    width: 400px;
+                  "
+                >
+                    <div style="
+                        display: flex;
+                        justify-content: space-around;
+                        align-items: center;
+                        margin-bottom: 20px;
                       "
-                      @change="${e => {
-                        if (e.target.value !== "") {
-                          state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
-                          const now = Date.now();
-                          this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
-                        }
-                      }}"  
                     >
-                      <option value="">select a source file</option>
-                      ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
-                        if (state.get('sourceFilename') === filename) {
-                          return html`
-                            <option value="${filename}" selected>${filename}</option>
-                          `
-                        } else {
-                          return html`
-                            <option value="${filename}">${filename}</option>
-                          `
-                        }
-                      })}
-                    </select>
+                      <h2>
+                        ${name}
+                      </h2>
 
-                    <div id="readyCircle-player${name}" style="
-                      height: 10px;
-                      width: 10px;
-                      background: ${state.get('sourceFileLoaded') ? "green" : "red"};
-                      clip-path: circle(5px at center);
-                    ">
-                      
+                      <sc-transport
+                        buttons="[play, stop]"
+                        width="50"
+                        @change="${e => {
+                          if (e.detail.value === 'play') {
+                            state.set({ mosaicingActive: true });
+                            const now = Date.now();
+                            this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
+                          } else {
+                            state.set({ mosaicingActive: false });
+                            const now = Date.now();
+                            this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
+                          }
+                        }}"
+                      ></sc-transport>
+
+                      <select 
+                        style="
+                          width: 200px;
+                          height: 30px
+                        "
+                        @change="${e => {
+                          if (e.target.value !== "") {
+                            state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
+                            const now = Date.now();
+                            this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
+                          }
+                        }}"  
+                      >
+                        <option value="">select a source file</option>
+                        ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
+                          if (state.get('sourceFilename') === filename) {
+                            return html`
+                              <option value="${filename}" selected>${filename}</option>
+                            `
+                          } else {
+                            return html`
+                              <option value="${filename}">${filename}</option>
+                            `
+                          }
+                        })}
+                      </select>
+
+                      <div id="readyCircle-player${name}" style="
+                        height: 10px;
+                        width: 10px;
+                        background: ${state.get('sourceFileLoaded') ? "green" : "red"};
+                        clip-path: circle(5px at center);
+                      ">
+                        
+                      </div>
                     </div>
 
-                  </div>
-                  <div style="margin:10px">
-                    volume
-                    <sc-slider
-                      min="-60"
-                      max="0"
-                      value="${state.get('volume')}"
-                      width="300"
-                      display-number
-                      @input="${e => state.set({ volume: e.detail.value})}"
-                    ></sc-slider>
-                  </div>
-                  <div style="margin:10px">
-                    detune
-                    <sc-slider
-                      min="-24"
-                      max="24"
-                      value="${state.get('detune')}"
-                      width="300"
-                      display-number
-                      @input="${e => state.set({ detune: e.detail.value })}"
-                    ></sc-slider>
-                  </div>
-                  <div style="margin:10px">
-                    grain per.
-                    <sc-slider
-                      min="0.01"
-                      max="0.1"
-                      value="${state.get('grainPeriod')}"
-                      width="300"
-                      display-number
-                      @input="${e => state.set({ grainPeriod: e.detail.value })}"
-                    ></sc-slider>
-                  </div>
-                  <div style="margin:10px">
-                    grain dur.
-                    <sc-slider
-                      min="0.02321995"
-                      max="0.37"
-                      value="${state.get('grainDuration')}"
-                      width="300"
-                      display-number
-                      @input="${e => state.set({ grainDuration: e.detail.value })}"
-                    ></sc-slider>
+                    <div style="margin:10px">
+                      volume
+                      <sc-slider
+                        min="-60"
+                        max="0"
+                        value="${state.get('volume')}"
+                        width="300"
+                        display-number
+                        @input="${e => state.set({ volume: e.detail.value})}"
+                      ></sc-slider>
+                    </div>
+                    <div style="margin:10px">
+                      detune
+                      <sc-slider
+                        min="-24"
+                        max="24"
+                        value="${state.get('detune')}"
+                        width="300"
+                        display-number
+                        @input="${e => state.set({ detune: e.detail.value })}"
+                      ></sc-slider>
+                    </div>
+                    <div style="margin:10px">
+                      grain per.
+                      <sc-slider
+                        min="0.01"
+                        max="0.1"
+                        value="${state.get('grainPeriod')}"
+                        width="300"
+                        display-number
+                        @input="${e => state.set({ grainPeriod: e.detail.value })}"
+                      ></sc-slider>
+                    </div>
+                    <div style="margin:10px">
+                      grain dur.
+                      <sc-slider
+                        min="0.02321995"
+                        max="0.37"
+                        value="${state.get('grainDuration')}"
+                        width="300"
+                        display-number
+                        @input="${e => state.set({ grainDuration: e.detail.value })}"
+                      ></sc-slider>
+                    </div>
                   </div>
                 `;
               })}

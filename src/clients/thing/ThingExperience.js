@@ -7,6 +7,7 @@ import Loader from './LoaderNode.js'
 import fs from 'node:fs';
 import path from 'node:path';
 import Worker from 'web-worker';
+import { GainNode, DynamicsCompressorNode } from 'node-web-audio-api';
 
 class ThingExperience extends AbstractExperience {
   constructor(client, config, audioContext) {
@@ -82,13 +83,31 @@ class ThingExperience extends AbstractExperience {
       name: name
     });
 
+
+    //Audio bus 
+    this.outputNode = new GainNode(this.audioContext);
+    this.busNode = new GainNode(this.audioContext);
+    this.sunVolume = new GainNode(this.audioContext);
+    this.compressor = new DynamicsCompressorNode(this.audioContext);
+    this.compressor.threshold.value = -30;
+    this.compressor.knee.value = 0.1;
+    this.compressor.ratio.value = 2;
+    this.compressor.attack.value = 0.01;
+    this.compressor.release.value = 0.1;
+
+    this.outputNode.connect(this.audioContext.destination);
+    this.sunVolume.connect(this.outputNode);
+    this.compressor.connect(this.sunVolume);
+    this.busNode.connect(this.compressor);
+
+    
     // Synth
     const getTimeFunction = () => this.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
-    this.grainPeriod = 0.05;
-    this.grainDuration = this.frameSize / this.sampleRate;
+    this.grainPeriod = this.participant.get('grainPeriod');
+    this.grainDuration = this.participant.get('grainDuration');
     this.synthEngine = new SynthEngineNode(this.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.audioContext.destination);
+    this.synthEngine.connect(this.busNode);
     this.scheduler.add(this.synthEngine, this.audioContext.currentTime);
 
     this.participant.subscribe(async updates => {
@@ -118,7 +137,7 @@ class ThingExperience extends AbstractExperience {
         this.currentSource = buffer;
         if (buffer) {
           this.worker.postMessage({
-            type: 'analyze',
+            type: 'analyze-source',
             data: {
               analysisInitData: this.analysisData,
               buffer: buffer.getChannelData(0),
@@ -131,6 +150,9 @@ class ThingExperience extends AbstractExperience {
       }
       if ('detune' in updates) {
         this.synthEngine.detune = updates.detune * 100;
+      }
+      if ('grainPeriod' in updates) {
+        this.synthEngine.setGrainPeriod(updates.grainPeriod);
       }
       if ('grainDuration' in updates) {
         this.synthEngine.setGrainDuration(updates.grainDuration);
@@ -148,6 +170,13 @@ class ThingExperience extends AbstractExperience {
                 //this is received as an object
                 // console.log('receiving', updates.mosaicingSynth)
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
+              }
+              if ('volume' in updates) {
+                this.sunVolume.gain.value = decibelToLinear(updates.volume);
+              }
+              if ('grainDuration' in updates) {
+                this.dryCompressor.gain.value = 1 - updates.grainDuration;
+                this.wetCompressor.gain.value = updates.grainDuration;
               }
             });
           }

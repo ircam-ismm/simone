@@ -1,4 +1,5 @@
 import DrumMachine from './DrumMachine.js';
+import DrumMachineContinuous from './DrumMachineContinuous.js';
 import SolarSystemSatellite from './SolarSystemSatellite.js';
 import SolarSystemOmega from './SolarSystemOmega.js';
 import SolarSystemOmegaSolo from './SolarSystemOmegaSolo.js';
@@ -11,6 +12,7 @@ import CloneWaiting from './CloneWaiting.js';
 
 const states = {
   'drum-machine': DrumMachine,
+  'drum-machine-continuous': DrumMachineContinuous,
   'clone': CloneRecording,
   'clone-recording': CloneRecording,
   'clone-waiting': CloneWaiting,

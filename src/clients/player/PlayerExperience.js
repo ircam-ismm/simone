@@ -111,12 +111,21 @@ class PlayerExperience extends AbstractExperience {
     this.fileReader = new FileReader();
 
     //Global audio
+    this.compressor = new DynamicsCompressorNode(this.audioContext);
+    this.compressor.threshold.value = -21.5;
+    this.compressor.knee.value = 0.7;
+    this.compressor.ratio.value = 2;
+    this.compressor.attack.value = 0.01;
+    this.compressor.release.value = 0.1;
+    this.compressor.connect(this.audioContext.destination);
+
     this.globalVolume = new GainNode(this.audioContext);
     this.globalVolume.gain.value = this.participant.get('globalVolume');
     this.globalMute = new GainNode(this.audioContext);
     this.globalVolume.gain.value = this.participant.get('globalMute') ? 0 : 1;
     this.globalVolume.connect(this.globalMute);
-    this.globalMute.connect(this.audioContext.destination);
+    this.globalMute.connect(this.compressor);
+
 
     // Proceed to the system set in the config
     await this.participant.set({

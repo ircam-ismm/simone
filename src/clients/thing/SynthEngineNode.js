@@ -75,7 +75,7 @@ class SynthEngineNode {
     time = Math.max(time, this.audioContext.currentTime);
     // playing sound part
     // get closest grain index from kdTree
-    if (this.currGrain && this.playing) {
+    if (this.currGrain && this.kdTree && this.playing) {
       const target = this.kdTree.nn(this.currGrain);
       const timeOffset = this.times[target];
 

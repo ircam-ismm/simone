@@ -66,6 +66,7 @@ export default class SolarSystemSatellite extends State {
         this.synthEngine.setBuffer(this.currentSource);
         this.synthEngine.setSearchSpace(searchTree, data.times);
         this.sourceDisplay.setBuffer(this.currentSource);
+        this.context.participant.set({ sourceFileLoaded: true });
       }
     });
 
@@ -74,18 +75,23 @@ export default class SolarSystemSatellite extends State {
       data: "worker says hello",
     });
 
+    //Audio bus 
+    this.outputNode = new GainNode(this.context.audioContext);
+    this.busNode = new GainNode(this.context.audioContext);
+    this.sunVolume = new GainNode(this.context.audioContext);
+    
+
+    this.outputNode.connect(this.context.globalVolume);
+    this.sunVolume.connect(this.outputNode);
+    this.busNode.connect(this.sunVolume);
+
+    // synth
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
-
-    // grain period for synthesis is here set to the maximum value by default.
-    // Indeed if the default value was lower, going above it would mean that
-    // this player's period would be longer than the other players and then data
-    // sent by omega would then start accumulating without being processed fast enough
-    // leading to progressive desynchronization of this player. 
     this.grainPeriod = this.context.participant.get('grainPeriod');
     this.grainDuration = this.context.participant.get('grainDuration');
     this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.globalVolume);
+    this.synthEngine.connect(this.busNode);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
     // Callback for displaying cursors
@@ -99,7 +105,6 @@ export default class SolarSystemSatellite extends State {
       }
       if ('sourceFilename' in updates) {
         this.setSourceFile(this.context.audioBufferLoader.data[updates.sourceFilename]);
-        this.context.participant.set({sourceFileLoaded: true});
       }
       if ('volume' in updates) {
         this.synthEngine.volume = decibelToLinear(updates.volume);
@@ -132,6 +137,9 @@ export default class SolarSystemSatellite extends State {
                 //this is received as an object
                 // console.log('receiving', updates.mosaicingSynth)
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
+              }
+              if ('volume' in updates) {
+                this.sunVolume.gain.value = decibelToLinear(updates.volume);
               }
             });
           }
