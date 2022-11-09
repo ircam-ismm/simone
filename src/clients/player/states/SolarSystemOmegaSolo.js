@@ -228,15 +228,55 @@ export default class SolarSystemOmegaSolo extends State {
             ></sc-button>
           </div>
 
-          <div>
-              <h3>global volume</h3>
-              <sc-slider
-                min="-60"
-                max="6"
-                value="0"
-                display-number
-                @input="${e => this.context.participant.set({ volume: e.detail.value})}"
-              ></sc-slider>
+          <div style="width: ${this.waveformWidth}px">
+            <div style="display: flex">
+              <div style="margin-right: 20px">
+                <h3>global volume</h3>
+                <sc-slider
+                  min="-60"
+                  max="6"
+                  width="290"
+                  value="${this.context.participant.get('volume')}"
+                  display-number
+                  @input="${e => this.context.participant.set({ volume: e.detail.value})}"
+                ></sc-slider>
+              </div>
+              <div>
+                <h3>global detune</h3>
+                <sc-slider
+                  min="-24"
+                  max="24"
+                  width="290"
+                  value="${this.context.participant.get('detune')}"
+                  display-number
+                  @input="${e => this.context.participant.set({ detune: e.detail.value })}"
+                ></sc-slider>
+              </div> 
+            </div>
+            <div style="display: flex">
+              <div style="margin-right: 20px">
+                <h3>global grain period</h3>
+                <sc-slider
+                  min="0.01"
+                  max="0.1"
+                  width="290"
+                  value="${this.context.participant.get('grainPeriod')}"
+                  display-number
+                  @input="${e => this.context.participant.set({ grainPeriod: e.detail.value })}"
+                ></sc-slider>
+              </div>
+              <div>
+                <h3>global grain duration</h3>
+                <sc-slider
+                  min="0.02"
+                  max="0.5"
+                  width="290"
+                  value="${this.context.participant.get('grainDuration')}"
+                  display-number
+                  @input="${e => this.context.participant.set({ grainDuration: e.detail.value })}"
+                ></sc-slider>
+              </div>
+            </div>
           </div>
 
           <div
@@ -359,8 +399,8 @@ export default class SolarSystemOmegaSolo extends State {
                     <div style="margin:10px">
                       grain dur.
                       <sc-slider
-                        min="0.02321995"
-                        max="0.37"
+                        min="0.02"
+                        max="0.5"
                         value="${state.get('grainDuration')}"
                         width="300"
                         display-number

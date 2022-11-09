@@ -174,6 +174,15 @@ class ThingExperience extends AbstractExperience {
               if ('volume' in updates) {
                 this.sunVolume.gain.value = decibelToLinear(updates.volume);
               }
+              if ('detune' in updates) {
+                this.participant.set({detune: updates.detune});
+              }
+              if ('grainPeriod' in updates) {
+                this.participant.set({ grainPeriod: updates.grainPeriod });
+              }
+              if ('grainDuration' in updates) {
+                this.participant.set({ grainDuration: updates.grainDuration });
+              }
             });
           }
           break;
