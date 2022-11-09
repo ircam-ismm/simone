@@ -174,10 +174,6 @@ class ThingExperience extends AbstractExperience {
               if ('volume' in updates) {
                 this.sunVolume.gain.value = decibelToLinear(updates.volume);
               }
-              if ('grainDuration' in updates) {
-                this.dryCompressor.gain.value = 1 - updates.grainDuration;
-                this.wetCompressor.gain.value = updates.grainDuration;
-              }
             });
           }
           break;
