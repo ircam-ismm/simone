@@ -61,6 +61,14 @@ export default class PerformanceState extends State {
       this.targetBufferSynth.setLoopLimits(start, end);
     });
 
+    //
+    this.context.participant.subscribe(updates => {
+      if ('mosaicingData' in updates) {
+        //this is received as an object
+        this.synthEngine.postData(Object.values(updates.mosaicingData));
+      }
+    });
+
     // Analyzer 
     this.mfcc = new Mfcc(this.mfccBands, this.mfccCoefs, this.mfccMinFreq, this.mfccMaxFreq, this.frameSize, this.sampleRate);
 
@@ -85,9 +93,8 @@ export default class PerformanceState extends State {
 
     this.grainPeriod = 0.05;
     this.grainDuration = this.frameSize / this.sampleRate;
-    this.sharedArray = [];
-    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.frameSize, this.sampleRate);
-    this.synthEngine = new SynthEngine(this.context.audioContext, this.sharedArray, this.grainPeriod, this.grainDuration, this.sampleRate);
+    this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.frameSize, this.sampleRate);
+    this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
     this.synthEngine.connect(this.bus);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
@@ -193,9 +200,11 @@ export default class PerformanceState extends State {
     switch (state) {
       case 'play':
         this.analyzerEngine.start();
+        this.synthEngine.start();
         break;
       case 'stop':
         this.analyzerEngine.stop();
+        this.synthEngine.stop();
         break;
     }
   }
