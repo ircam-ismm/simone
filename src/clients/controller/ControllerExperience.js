@@ -19,6 +19,7 @@ class ControllerExperience extends AbstractExperience {
     this.audioContext = audioContext;
 
     // require plugins if needed
+    this.filesystem = this.require('filesystem');
 
     renderInitializationScreens(client, config, $container);
   }
@@ -48,6 +49,10 @@ class ControllerExperience extends AbstractExperience {
       }
     });
 
+
+    // soundbank 
+    
+
     this.render();
   }
   /*
@@ -64,6 +69,7 @@ class ControllerExperience extends AbstractExperience {
     window.cancelAnimationFrame(this.rafId);
 
     const now = this.audioContext.currentTime;
+    const soundfiles = this.filesystem.get('soundbank').children;
 
     this.rafId = window.requestAnimationFrame(() => {
       render(html`
@@ -126,7 +132,33 @@ class ControllerExperience extends AbstractExperience {
                   </div>
                   <div style="padding-top: 10px">
                     <div style="display: flex; margin-bottom: 10px;">
-                      <p style="padding-right: 20px">current source : ${state.get('sourceFilename')}</p>
+                      <p style="padding-right: 20px">current source</p>
+                      <select 
+                        style="
+                          width: 200px;
+                          height: 30px
+                        "
+                        @change="${e => {
+                          if (e.target.value !== "") {
+                            state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
+                          }
+                        }}"  
+                      >
+                        <option value="">select a source file</option>
+                        ${soundfiles.map(el => {
+                          if (el.type === 'file') {
+                            if (state.get('sourceFilename') === el.name) {
+                              return html`
+                              <option value="${el.name}" selected>${el.name}</option>
+                            `
+                            } else {
+                              return html`
+                              <option value="${el.name}">${el.name}</option>
+                            `
+                            }
+                          }
+                        })}
+                      </select>
                     </div>
                     <div style="display: flex; margin-bottom: 10px;">
                       <p style="padding-right: 20px">player volume (dB)</p>

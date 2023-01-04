@@ -3,6 +3,8 @@ import { AbstractExperience } from '@soundworks/core/server';
 class ControllerExperience extends AbstractExperience {
   constructor(server, clientTypes, options = {}) {
     super(server, clientTypes);
+
+    this.filesystem = this.require('filesystem');
   }
 
   start() {

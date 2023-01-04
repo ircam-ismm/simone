@@ -9,6 +9,7 @@ import PerformanceState from './PerformanceState.js';
 import ClonePlaying from './ClonePlaying.js';
 import CloneRecording from './CloneRecording.js';
 import CloneWaiting from './CloneWaiting.js';
+import Simplified from './Simplified.js';
 
 const states = {
   'drum-machine': DrumMachine,
@@ -24,6 +25,7 @@ const states = {
   'solar-system-omega-solo': SolarSystemOmegaSolo,
   'no-microphone': NoMicrophone,
   'performance': PerformanceState,
+  'simplified': Simplified,
 };
 
 class StateMachine {

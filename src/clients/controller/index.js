@@ -26,7 +26,7 @@ async function launch($container, index) {
     // register plugins
     // -------------------------------------------------------------------
     // client.pluginManager.register(pluginName, pluginFactory, [pluginOptions], [dependencies])
-
+    client.pluginManager.register('filesystem', pluginFilesystemFactory, {}, []);
     // -------------------------------------------------------------------
     // launch application
     // -------------------------------------------------------------------

@@ -77,7 +77,7 @@ class AnalyzerEngine {
       }
 
       this.dataDestination.set({ mosaicingData: grainMfcc });
-      
+
       if (this.advanceCallback) {
         this.advanceCallback(this.transportTime / this.target.duration);
       }
