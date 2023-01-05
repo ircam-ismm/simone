@@ -4,7 +4,7 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
-import WaveformDisplay from '../WaveformDisplay';
+import WaveformDisplay from '../../utils/WaveformDisplay';
 import State from './State.js';
 import { html } from 'lit/html.js';
 import toWav from 'audiobuffer-to-wav';

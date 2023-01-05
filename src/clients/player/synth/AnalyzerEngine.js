@@ -1,4 +1,4 @@
-import Mfcc from './Mfcc.js';
+import Mfcc from '../../utils/Mfcc.js';
 
 class AnalyzerEngine {
   constructor(audioContext, dataDestination, period, frameSize, sampleRate) {
@@ -82,8 +82,6 @@ class AnalyzerEngine {
         this.advanceCallback(this.transportTime / this.target.duration);
       }
     }
-
-    
 
 
     this.transportTime += this.period;
