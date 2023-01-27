@@ -19,7 +19,7 @@ export default class Simplified extends State {
     this.currentTarget = null;
 
     // parameters for audio analysis
-    this.frameSize = 4096;
+    this.frameSize = 2048;
     this.hopSize = 512;
     this.sampleRate = this.context.audioContext.sampleRate;
     this.mfccBands = 24;
@@ -40,6 +40,12 @@ export default class Simplified extends State {
     this.waveformWidth = 800;
     this.waveformHeightSource = 200;
     this.waveformHeightTarget = 150;
+
+    this.cleanBuffer = this.context.audioContext.createBuffer(1, 4000, this.context.audioContext.sampleRate);
+    const cleanBufferData = this.cleanBuffer.getChannelData(0);
+    for (let i = 0; i < this.cleanBuffer.length; i++) {
+      cleanBufferData[i] = 0;
+    }
   }
 
   async enter() {
@@ -69,6 +75,11 @@ export default class Simplified extends State {
         //this is received as an object
         // console.log('receiving', updates.mosaicingSynth)
         this.synthEngine.postData(Object.values(updates.mosaicingData));
+      }
+      if ('clean' in updates) {
+        this.analyzerEngine.setTarget(this.cleanBuffer);
+        this.targetDisplay.setBuffer(this.cleanBuffer);
+        this.recorderDisplay.setBuffer(this.cleanBuffer);
       }
     });
 
@@ -119,12 +130,15 @@ export default class Simplified extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
+    this.densityGain = new GainNode(this.context.audioContext);
+    this.densityGain.connect(this.context.globalVolume);
+
     this.grainPeriod = this.context.participant.get('grainPeriod');
     this.grainDuration = this.context.participant.get('grainDuration');
 
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.frameSize, this.sampleRate);
     this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.globalVolume);
+    this.synthEngine.connect(this.densityGain);
     
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
@@ -234,80 +248,61 @@ export default class Simplified extends State {
             margin-left: auto;
           "
         >
-          <div style="border-color: yellow"></div>
-          <div style="position: relative">
-            ${this.recorderDisplay.render()}
+          <div style="margin-bottom: 5px; position: relative; height: 50px;">
             <sc-record
-              style="
-                position: absolute;
-                bottom: 10px;
-                left: 10px;
-              "
+              style="float: left;"
+              height="50"
               @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
             ></sc-record>
+
+            <h2 style="position: absolute; left: 60px">
+              1. Enregistrez un son
+            </h2>
+          </div>
+
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
           </div>
 
           <div style="
               height: 100px;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
               position: relative;
             "
           >
-            <div>
-              <div style="
-                position: absolute;
-                left:12px;
-              ">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  height="30px" 
-                  width="20px" 
-                  viewBox="0 0 100 100"
-                >
-                  <line x1="50" y1="20" x2="50" y2="100" stroke="white" stroke-width="10"/>
-                  <polygon points="20,40 50,0 80,40" fill="white"/>
-                </svg>
-              </div>
-              
-              <h3 style="
-                position: absolute;
-                left: 50px;
-                top: -5px;
-              ">
-                1. Enregistrez un son ici
-              <h3>
+            <sc-button
+              height="40";
+              width="150";
+              text="2. Charger le son"
+              @input="${e => {
+                this.setTargetFile(this.recordedBuffer);
+              }}"
+            ></sc-button>
+
+            <div style="
+              position: absolute;
+              left:50px;
+            ">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                height="70px" 
+                width="40px" 
+                viewBox="0 0 100 100"
+              >
+                <line x1="50" y1="-30" x2="50" y2="80" stroke="white" stroke-width="10"/>
+                <polygon points="20,60 50,100 80,60" fill="white"/>
+              </svg>
             </div>
 
-            <div style="margin-bottom: 5px;">
-              <div style="float: left; margin-right: 5px">
-                <h3>2.</h3>
-              </div>
-              <div style="float: left; margin-right: 5px">
-                <sc-button
-                  height="30";
-                  width="100";
-                  text="Appuyez ici"
-                  @input="${e => {
-                    this.setTargetFile(this.recordedBuffer);
-                  }}"
-                ></sc-button>
-              </div>
-              <div>
-                <h3>pour que le son enregistré contrôle la synthèse sonore</h3>
-              </div>
-            </div>
           
-            <div style="position: absolute; right: 0; margin-top: 20px">
+            <div style="width: 400px; position: absolute; top: 0; left: 40%; margin-top: 20px">
               <sc-transport
-                style="display: block"
+                style="float: left; margin-right: 10px"
                 id="transport-mosaicing"
                 buttons="[play, stop]"
                 width="50"
                 @change="${e => this.transportMosaicing(e.detail.value)}"
               ></sc-transport>
-              <h3>3. Appuyez sur play</h3>
+              <h2>3. Appuyez sur play</h2>
             </div>
 
           </div>
@@ -316,13 +311,13 @@ export default class Simplified extends State {
             ${this.targetDisplay.render()}
           </div>
 
-          <div>
-            <p>Vous pouvez selectionner une section à faire boucler avec la souris : clic gauche (laissez appuyé) puis glisser</p>
+          <div style="font-size: small;">
+            <p>selectionner à la souris une section à faire boucler : clic gauche (laissez appuyé) puis glisser</p>
           </div>
 
           <div style="display: flex; margin-top: 20px">
             <div style="margin-right: 40px">
-              <h3>volume</h3>
+              <h2>volume</h2>
               <sc-slider
                 id="slider-volume"
                 min="-60"
@@ -337,7 +332,7 @@ export default class Simplified extends State {
             </div>
 
             <div style="margin-right: 40px">
-              <h3>hauteur</h3>
+              <h2>hauteur</h2>
               <sc-slider
                 id="slider-detune"
                 min="-24"
@@ -351,7 +346,8 @@ export default class Simplified extends State {
               ></sc-slider>
               <div style="
                   display: flex;
-                  justify-content: space-between
+                  justify-content: space-between;
+                  font-size: small;
                 "
               >
                 <p>grave</p>
@@ -360,7 +356,7 @@ export default class Simplified extends State {
             </div>
 
             <div style="margin-right: 30px">
-              <h3>densité</h3>
+              <h2>densité</h2>
               <sc-slider
                 id="slider-density"
                 min="0"
@@ -369,17 +365,21 @@ export default class Simplified extends State {
                 width="240"
                 @input="${e => {
                   const duration = 0.48*e.detail.value + 0.02;
-                  const period = -0.08*e.detail.value + 0.1;
+                  const period = -0.18*e.detail.value + 0.2;
+                  const densityGain = 1 - 0.5*e.detail.value;
+                  const now = this.context.audioContext.currentTime;
                   this.analyzerEngine.setPeriod(period);
                   this.synthEngine.setGrainPeriod(period);
                   this.synthEngine.setGrainDuration(duration);
+                  this.densityGain.gain.setTargetAtTime(densityGain, now, 0.02);
                   this.context.participant.set({ grainDuration: duration });
                   this.context.participant.set({ grainPeriod: period });
                 }}"
               ></sc-slider>
               <div style="
                   display: flex;
-                  justify-content: space-between
+                  justify-content: space-between;
+                  font-size: small;
                 "
               >
                 <p>- dense</p>

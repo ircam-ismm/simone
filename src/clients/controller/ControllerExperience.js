@@ -86,6 +86,16 @@ class ControllerExperience extends AbstractExperience {
           }}"
           ></sc-text>
         </div>
+
+
+        <sc-button
+            text="clean all"
+            @input="${e => {
+              Object.entries(this.players).forEach(([name, state]) => {
+                state.set({clean: 'clean'});
+              })
+            }}"
+        ></sc-button>
         
         <div style="
           display: flex;
@@ -99,6 +109,7 @@ class ControllerExperience extends AbstractExperience {
                     margin: 20px;
                     border: 2px solid grey;
                     padding: 20px;
+                    position: relative;
                   "
                 >
                   <h2>
@@ -213,7 +224,13 @@ class ControllerExperience extends AbstractExperience {
                       ></sc-slider>
                     </div>
                   </div>
-
+                  <sc-button
+                    text="clean"
+                    @input="${e => {
+                      state.set({clean: 'clean'});
+                    }}"
+                  ></sc-button>
+        
                 </div>
               `;
             }

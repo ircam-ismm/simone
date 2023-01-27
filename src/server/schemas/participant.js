@@ -45,6 +45,10 @@ export default {
     type: 'float',
     default: 0.25,
   },
+  density: {
+    type: 'float',
+    default: 0.5,
+  },
   sourceFileLoaded: {
     type: 'boolean',
     default: false,
@@ -60,5 +64,10 @@ export default {
   message: {
     type: 'string',
     default: '',
+  },
+  clean: {
+    type: 'string',
+    default: '',
+    event: true,
   }
 };

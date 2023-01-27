@@ -44,11 +44,6 @@ export default class DrumMachine extends State {
     this.nFramesBeat = 8; // initial length of the looping section (in number of frames)
     this.selectionLength = this.nFramesBeat*this.frameSize/44100;
     this.maxNFramesBeat = 64 // maximum length of looping section (in n of frames)
-
-    // Waveform display
-    this.waveformWidth = 800;
-    this.waveformHeightSource = 200;
-    this.waveformHeightTarget = 150;
   }
 
   async enter() {
@@ -58,6 +53,7 @@ export default class DrumMachine extends State {
         this.context.fileReader.readAsArrayBuffer(e.data);
       };
     });
+
 
     this.context.fileReader.addEventListener('loadend', async () => {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
@@ -81,9 +77,18 @@ export default class DrumMachine extends State {
     });
 
     // Waveforms display
-    this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidth, false, true);
-    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, false);
-    this.recorderDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, false, false);
+    console.log(document.body.clientWidth);
+    const documentWidth = document.body.clientWidth;
+    this.waveformWidthLarge = 1600;
+    this.waveformHeightLarge = 250;
+    this.waveformWidthRecorder = 800;
+    this.waveformHeightRecorder = 100;
+    this.waveformWidthSource = 540;
+    this.waveformHeightSource = 140;
+    console.log(documentWidth, this.waveformWidthLarge, this.waveformHeightLarge)
+    this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, false);
+    this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
 
     // Callback for when selection on the display is moved
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
@@ -130,11 +135,14 @@ export default class DrumMachine extends State {
     const getTimeFunction = () => this.context.sync.getLocalTime();
     this.scheduler = new Scheduler(getTimeFunction);
 
+    this.densityGain = new GainNode(this.context.audioContext);
+    this.densityGain.connect(this.context.globalVolume);
+
     this.grainPeriod = this.context.participant.get('grainPeriod');
     this.grainDuration = this.context.participant.get('grainDuration');
     this.analyzerEngine = new AnalyzerEngine(this.context.audioContext, this.context.participant, this.grainPeriod, this.frameSize, this.sampleRate);
     this.synthEngine = new SynthEngine(this.context.audioContext, this.grainPeriod, this.grainDuration, this.sampleRate);
-    this.synthEngine.connect(this.context.globalVolume);
+    this.synthEngine.connect(this.densityGain);
     this.scheduler.add(this.analyzerEngine, this.context.audioContext.currentTime);
     this.scheduler.add(this.synthEngine, this.context.audioContext.currentTime);
 
@@ -152,6 +160,7 @@ export default class DrumMachine extends State {
       detune: this.context.participant.get('detune'),
       grainPeriod: this.context.participant.get('grainPeriod'),
       grainDuration: this.context.participant.get('grainDuration'),
+      density: this.context.participant.get('density'),
     };
     this.previousValues = {...this.currentValues};
   } 
@@ -273,6 +282,13 @@ export default class DrumMachine extends State {
     }
   }
 
+  densityToGrain(density) {
+    const period = -0.18 * density + 0.2;
+    const duration = 0.48 * density + 0.02;
+    const densityGain = 1 - 0.5 * density;
+    return [period, duration, densityGain];
+  }
+
   switchValueSlider(name) {
     const temp = this.previousValues[name];
     this.previousValues[name] = this.currentValues[name];
@@ -295,11 +311,298 @@ export default class DrumMachine extends State {
         this.synthEngine.setGrainDuration(temp);
         this.context.participant.set({ grainDuration: temp });
         break;
+      case 'density': 
+        const [period, duration, densityGain] = this.densityToGrain(temp);
+        const now = this.context.audioContext.currentTime;
+        this.analyzerEngine.setPeriod(period);
+        this.synthEngine.setGrainPeriod(period);
+        this.synthEngine.setGrainDuration(duration);
+        this.densityGain.gain.setTargetAtTime(densityGain, now, 0.02);
+        this.context.participant.set({ density: temp});
+        break;
     }
     this.render();
   }
 
 
+
+  render() {
+    return html`
+      <!-- Name and message bar -->
+      <div style="
+        height: 100px;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+      "  
+      >
+        <h1> ${this.context.participant.get('name')} [id: ${this.context.checkinId}] </h1>
+        <div style="margin-left: 20px; width: 300px;">
+          <h3>Message from experimenter</h3>
+          <p id="messageBox"></p>
+        </div>
+      </div>
+
+
+      <!-- Recorder and source -->
+      <div style="
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 50px;
+      "
+      >
+        <div style="width: 800px">
+          <h2>record target</h2>
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
+            <sc-record
+              style="
+                position: absolute;
+                bottom: 2px; 
+                left: 2px;
+              "
+              height="40"
+              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+            ></sc-record>
+          </div>
+          <sc-button
+            width="${this.waveformWidthRecorder}"
+            height="39"
+            text="↓ use as target ↓"
+            @input="${e => {
+              this.setTargetFile(this.recordedBuffer);
+            }}"
+          ></sc-button>
+        </div>
+        
+        <div style="width: 800px;">
+          <h2>select source</h2>
+          <div style="position: relative;">
+            <sc-file-tree
+              height="140"
+              width="250"
+              value="${JSON.stringify(this.context.soundbankTreeRender)}";
+              @input="${e => {
+                this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
+                this.context.participant.set({ sourceFilename: e.detail.value.name });
+                const now = Date.now();
+                this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
+              }}"
+            ></sc-file-tree>
+            ${this.sourceDisplay.render()}
+            <sc-transport
+              id="transport-source"
+              style="
+                position: absolute;
+                bottom: 2px;
+                left: 260px;
+              "
+              buttons="[play, stop]"
+              height="40"
+              @change="${e => this.transportSourceFile(e.detail.value)}"
+            ></sc-transport>
+          </div>    
+        </div>
+      </div>
+
+      <!-- Control panel -->
+      <div style="
+        margin: 20px 50px;
+        padding: 10px 10px 50px 10px;
+        background-color: #232323;
+      "
+      > 
+        <div style="
+          margin: 0px auto;
+          display: table; 
+        "
+        >
+          <h2>target</h2>
+          <div style="position: relative;">
+            ${this.targetDisplay.render()}
+            <sc-transport
+              style="
+                position: absolute;
+                bottom: 2px;
+                left: 2px;
+              "
+              id="transport-mosaicing"
+              buttons="[play, stop]"
+              width="60"
+              @change="${e => this.transportMosaicing(e.detail.value)}"
+            ></sc-transport>
+            <sc-button
+              style="
+                position: absolute;
+                bottom: 2px;
+                right: 70px;
+              "
+              width="60"
+              height="60"
+              text="*2"
+              @input="${e => this.changeSelectionLength("longer")}"
+            ></sc-button>
+            <sc-button
+              style="
+                position: absolute;
+                bottom: 2px;
+                right: 5px;
+              "
+              width="60"
+              height="60"
+              text="/2"
+              @input="${e => this.changeSelectionLength("smaller")}"
+            ></sc-button>
+          </div>
+
+          <!-- Sliders -->
+          <div style="
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+          "
+          >
+            <div>
+              <!-- volume -->
+              <div>
+                <h3>volume (dB)</h3>
+                <div>
+                  <sc-slider
+                    id="slider-volume"
+                    min="-60"
+                    max="0"
+                    value="${this.context.participant.get('volume')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.volume = decibelToLinear(e.detail.value);
+                      this.context.participant.set({volume: e.detail.value});
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.volume) {
+                        this.previousValues.volume = this.currentValues.volume;
+                        this.currentValues.volume = e.detail.value;
+                      }
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('volume')}"
+                  >
+                </div>
+              </div>
+                 
+              <!-- detune -->
+              <div>
+                <h3>detune</h3>
+                <div>
+                  <sc-slider
+                    id="slider-detune"
+                    min="-24"
+                    max="24"
+                    value="${this.context.participant.get('detune')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.detune = e.detail.value * 100;
+                      this.context.participant.set({ detune: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.detune) {
+                        this.previousValues.detune = this.currentValues.detune;
+                        this.currentValues.detune = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('detune')}"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <!-- grain period -->
+              <div>
+                <h3>grain period</h3>
+                <div>
+                  <sc-slider
+                    id="slider-grainPeriod"
+                    min="0.01"
+                    max="0.3"
+                    value="${this.context.participant.get('grainPeriod')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.analyzerEngine.setPeriod(e.detail.value);
+                      this.synthEngine.setGrainPeriod(e.detail.value);
+                      this.context.participant.set({ grainPeriod: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.grainPeriod) {
+                        this.previousValues.grainPeriod = this.currentValues.grainPeriod;
+                        this.currentValues.grainPeriod = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('grainPeriod')}"
+                  >
+                </div>
+              </div>
+
+              <!-- grain duration -->
+              <div>
+                <h3>grain duration</h3>
+                <div>
+                  <sc-slider
+                    id="slider-grainDuration"
+                    min="0.02"
+                    max="0.5"
+                    value="${this.context.participant.get('grainDuration')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.setGrainDuration(e.detail.value);
+                      this.context.participant.set({ grainDuration: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.grainDuration) {
+                        this.previousValues.grainDuration = this.currentValues.grainDuration;
+                        this.currentValues.grainDuration = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('grainDuration')}"
+                  >
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      
+      </div>
+
+    `
+  }
+
+
+/*
   render() {
     return html`
         <div style="padding: 20px">
@@ -310,31 +613,7 @@ export default class DrumMachine extends State {
           
           <div style="display: flex">
             <div>
-              <h3>Target</h3>
-
-              <div style="position: relative">
-                ${this.targetDisplay.render()}
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 10px;
-                  "
-                  width="40";
-                  text="*2"
-                  @input="${e => this.changeSelectionLength("longer")}"
-                ></sc-button>
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 55px;
-                  "
-                  width="40";
-                  text="/2"
-                  @input="${e => this.changeSelectionLength("smaller")}"
-                ></sc-button>
-              </div>
+              <h3>recorder </h3>
 
               <div style="position: relative">
                 ${this.recorderDisplay.render()}
@@ -372,6 +651,35 @@ export default class DrumMachine extends State {
                   }}"
                 ></sc-button>
               </div>
+
+
+              <h3>target</h3>
+
+              <div style="position: relative">
+                ${this.targetDisplay.render()}
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                  "
+                  width="40";
+                  text="*2"
+                  @input="${e => this.changeSelectionLength("longer")}"
+                ></sc-button>
+                <sc-button
+                  style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 55px;
+                  "
+                  width="40";
+                  text="/2"
+                  @input="${e => this.changeSelectionLength("smaller")}"
+                ></sc-button>
+              </div>
+
+              
             </div>
             <div style="margin-left: 20px">
               <h3>Message from experimenter</h3>
@@ -568,5 +876,5 @@ export default class DrumMachine extends State {
 
       `
   }
+  */
 }
-

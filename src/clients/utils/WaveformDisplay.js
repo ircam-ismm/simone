@@ -26,6 +26,7 @@ export default class WaveformDisplay {
     this.container.setAttribute('height', `${this.height}`);
     this.container.setAttribute('width', `${this.width}`);
     this.container.style.backgroundColor = "#1c1c1c";
+    
 
     this.waveformSvg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.waveformSvg.setAttribute('fill', 'none');
@@ -203,7 +204,11 @@ export default class WaveformDisplay {
     }
 
     this.bufferData = avgBuffer.map(val => {
-      return val / maxVal;
+      if (maxVal > 0) {
+        return val / maxVal;
+      } else {
+        return val;
+      }
     });
   }
 
