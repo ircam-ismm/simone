@@ -114,8 +114,11 @@ export default class ClonePlaying extends State {
         this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
-        this.targetDisplay.setSelectionStartTime(0);
-        this.targetDisplay.setSelectionLength(this.currentTarget.duration);
+        this.selectionStart = 0;
+        this.selectionEnd = this.currentTarget.duration;
+        this.analyzerEngine.setLoopLimits(this.selectionStart, this.selectionEnd);
+        // this.targetDisplay.setSelectionStartTime(0);
+        // this.targetDisplay.setSelectionLength(this.currentTarget.duration);
       }
     });
 

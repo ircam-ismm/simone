@@ -290,7 +290,6 @@ export default class WaveformDisplay {
     this.clickedSelection = (this.mouseDownXRel < this.selectionEndPos) && (this.mouseDownXRel > this.selectionStartPos);
     window.addEventListener('mousemove', this.mouseMove);
     window.addEventListener('mouseup', this.mouseUp);
-    console.log(this.clickedSelection, this.mouseDownXRel, this.selectionStartPos, this.selectionEndPos);
   }
 
   mouseMove(e) {

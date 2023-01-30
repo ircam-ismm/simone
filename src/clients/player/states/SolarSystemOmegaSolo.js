@@ -36,9 +36,6 @@ export default class SolarSystemOmegaSolo extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     };
 
-    // Waveform display
-    this.waveformWidth = 600;
-    this.waveformHeight = 150;
 
     this.targetPlayerState = this.context.participant;
   }
@@ -60,8 +57,12 @@ export default class SolarSystemOmegaSolo extends State {
     });
 
     // Waveform display
-    this.targetDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, true, true, true);
-    this.recorderDisplay = new WaveformDisplay(this.waveformHeight, this.waveformWidth, false, false);
+    this.waveformWidthLarge = 1600;
+    this.waveformHeightLarge = 250;
+    this.waveformWidthRecorder = 1200;
+    this.waveformHeightRecorder = 100;
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
+    this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
 
     // Callback for when selection on the display is changed
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
@@ -87,8 +88,11 @@ export default class SolarSystemOmegaSolo extends State {
         this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
-        this.targetDisplay.setSelectionStartTime(0);
-        this.targetDisplay.setSelectionLength(this.currentTarget.duration);
+        this.selectionStart = 0;
+        this.selectionEnd = this.currentTarget.duration;
+        this.analyzerEngine.setLoopLimits(this.selectionStart, this.selectionEnd);
+        // this.targetDisplay.setSelectionStartTime(0);
+        // this.targetDisplay.setSelectionLength(this.currentTarget.duration);
         this.analyzerEngine.start();
       }
     });
@@ -176,7 +180,239 @@ export default class SolarSystemOmegaSolo extends State {
     }
   }
 
+  render() {
+    return html`
+      <!-- Name and message bar -->
+      <div style="
+        height: 100px;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+      "
+      >
+        <h1> ${this.context.participant.get('name')} [id: ${this.context.checkinId}] </h1>
+        <div style="margin-left: 20px; width: 300px;">
+          <h3>Message from experimenter</h3>
+          <p id="messageBox"></p>
+        </div>
+      </div>
 
+
+
+      <!-- Recorder -->
+      <div style="
+        display: flex;
+        justify-content: center;
+        margin: 20px 50px;
+      "
+      >
+        <div style="width: 1200px">
+          <h2>record target</h2>
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
+            <sc-record
+              style="
+                position: absolute;
+                bottom: 4px; 
+                left: 2px;
+              "
+              height="40"
+              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+            ></sc-record>
+          </div>
+          <sc-button
+            width="${this.waveformWidthRecorder}"
+            height="39"
+            text="↓ use as target ↓"
+            selected
+            @input="${e => {
+              this.setTargetFile(this.recordedBuffer);
+            }}"
+          ></sc-button>
+        </div>
+      </div>
+
+
+      <!-- Control panel -->
+      <div style="
+        margin: 20px 50px;
+        padding: 10px 10px 50px 10px;
+        background-color: #525c68;
+      "
+      > 
+        <div style="
+          margin: 0px auto;
+          display: table; 
+        "
+        >
+          <h2>target</h2>
+          <div style="position: relative;">
+            ${this.targetDisplay.render()}
+          </div>
+
+          <h2>satellites</h2>
+          <!-- Clients -->
+          <div style="
+            margin-top: 20px;
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(370px, 370px));
+            grid-gap: 38px;
+          "
+          >
+            ${Object.entries(this.players).map(([name, state]) => { 
+              return html`
+                <div style="
+                  padding: 5px 2px;
+                  width: 370px;
+                  background-color: #1c1c1c;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: space-between;
+                "
+                >
+                  <h1>${name}</h1>
+                  <div style="
+                    display: flex;
+                    width: inherit;
+                    justify-content: space-evenly;
+                    align-items: center;
+                  ">
+                    <sc-transport
+                      buttons="[play, stop]"
+                      width="50"
+                      @change="${e => {
+                        if (e.detail.value === 'play') {
+                          state.set({ mosaicingActive: true });
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
+                        } else {
+                          state.set({ mosaicingActive: false });
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
+                        }
+                      }}"
+                    ></sc-transport>
+                    <select 
+                      style="
+                        width: 200px;
+                        height: 30px
+                      "
+                      @change="${e => {
+                        if (e.target.value !== "") {
+                          state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
+                          const now = Date.now();
+                          this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
+                        }
+                      }}"  
+                    >
+                      <option value="">select a source file</option>
+                      ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
+                        if (state.get('sourceFilename') === filename) {
+                          return html`
+                            <option value="${filename}" selected>${filename}</option>
+                          `
+                        } else {
+                          return html`
+                            <option value="${filename}">${filename}</option>
+                          `
+                        }
+                      })}
+                    </select>
+
+                    <div id="readyCircle-player${name}" style="
+                      height: 10px;
+                      width: 10px;
+                      background: ${state.get('sourceFileLoaded') ? "green" : "red"};
+                      clip-path: circle(5px at center);
+                    ">
+                    </div>
+                  </div>
+
+                  <div style="
+                    margin: 10px;
+                    display: flex;
+                    width: 350px;
+                    justify-content: space-between;
+                    align-items: center;
+                  ">
+                    volume
+                    <sc-slider
+                      min="-60"
+                      max="0"
+                      value="${state.get('volume')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ volume: e.detail.value})}"
+                    ></sc-slider>
+                  </div>
+                  <div style="
+                    margin: 10px;
+                    display: flex;
+                    width: 350px;
+                    justify-content: space-between;
+                    align-items: center;
+                  ">
+                    detune
+                    <sc-slider
+                      min="-24"
+                      max="24"
+                      value="${state.get('detune')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ detune: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  <div style="
+                    margin: 10px;
+                    display: flex;
+                    width: 350px;
+                    justify-content: space-between;
+                    align-items: center;
+                  ">
+                    period
+                    <sc-slider
+                      min="0.01"
+                      max="0.1"
+                      value="${state.get('grainPeriod')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ grainPeriod: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  <div style="
+                    margin: 10px;
+                    display: flex;
+                    width: 350px;
+                    justify-content: space-between;
+                    align-items: center;
+                  ">
+                    duration
+                    <sc-slider
+                      min="0.02"
+                      max="0.5"
+                      value="${state.get('grainDuration')}"
+                      width="300"
+                      display-number
+                      @input="${e => state.set({ grainDuration: e.detail.value })}"
+                    ></sc-slider>
+                  </div>
+                  
+                  
+
+                </div>
+              `  
+            })}
+          </div>
+
+        </div>
+      
+      </div>
+    `
+  }
+
+
+/*
   render() {
     return html`
         <div style="padding: 20px">
@@ -415,5 +651,7 @@ export default class SolarSystemOmegaSolo extends State {
         </div>
       `
   }
+*/
+
 }
 
