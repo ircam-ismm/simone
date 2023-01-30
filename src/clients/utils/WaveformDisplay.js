@@ -76,13 +76,15 @@ export default class WaveformDisplay {
     this.pointerIds = []; // we want to keep the order of appearance consistant
 
     if (this.hasSelection) {
-      if (this.freeSelection) {
-        this.container.addEventListener('mousedown', this.mouseDown);
-        this.container.addEventListener('touchstart', this.touchStartTarget);
-      } else {
-        this.selectionSvg.addEventListener('mousedown', this.mouseDown);
-        this.selectionSvg.addEventListener('touchstart', this.touchStartTarget);
-      }
+      this.container.addEventListener('mousedown', this.mouseDown);
+      this.container.addEventListener('touchstart', this.touchStartTarget);
+      // if (this.freeSelection) {
+      //   this.container.addEventListener('mousedown', this.mouseDown);
+      //   this.container.addEventListener('touchstart', this.touchStartTarget);
+      // } else {
+      //   this.selectionSvg.addEventListener('mousedown', this.mouseDown);
+      //   this.selectionSvg.addEventListener('touchstart', this.touchStartTarget);
+      // }
     }
     
   }
@@ -284,6 +286,47 @@ export default class WaveformDisplay {
   mouseDown(e) {
     this.clickTargetDim = e.currentTarget.getBoundingClientRect();
     this.mouseDownX = e.clientX;
+    this.mouseDownXRel = this.mouseDownX - this.clickTargetDim.left;
+    this.clickedSelection = (this.mouseDownXRel < this.selectionEndPos) && (this.mouseDownXRel > this.selectionStartPos);
+    window.addEventListener('mousemove', this.mouseMove);
+    window.addEventListener('mouseup', this.mouseUp);
+    console.log(this.clickedSelection, this.mouseDownXRel, this.selectionStartPos, this.selectionEndPos);
+  }
+
+  mouseMove(e) {
+    e.preventDefault(); // Prevent selection
+    if (!this.clickedSelection && this.freeSelection) {
+      const mouseMoveXRel = Math.max(0, Math.min(e.clientX - this.clickTargetDim.left, this.width));
+      this.selectionStartPos = Math.min(this.mouseDownXRel, mouseMoveXRel);
+      this.selectionEndPos = Math.max(this.mouseDownXRel, mouseMoveXRel);
+      this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+      this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+      this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
+    } else if (this.clickedSelection) {
+      const mouseMov = e.clientX - this.mouseDownX;
+      this.selectionStartPos = this.selectionOffset + mouseMov;
+      this.selectionStartPos = Math.min(Math.max(0, this.selectionStartPos), this.width - this.selectionWidth);
+      this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
+      this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+    }
+
+    if (this.cbSelectionChange) {
+      const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+      const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+      this.cbSelectionChange(selectionStartTime, selectionEndTime);
+    }
+  }
+
+  mouseUp(e) {
+    this.selectionOffset = this.selectionStartPos;
+    window.removeEventListener('mousemove', this.mouseMove);
+    window.removeEventListener('mouseup', this.mouseUp);
+  }
+
+  /*
+  mouseDown(e) {
+    this.clickTargetDim = e.currentTarget.getBoundingClientRect();
+    this.mouseDownX = e.clientX;
     window.addEventListener('mousemove', this.mouseMove);
     window.addEventListener('mouseup', this.mouseUp);
   }
@@ -320,6 +363,7 @@ export default class WaveformDisplay {
     window.removeEventListener('mousemove', this.mouseMove);
     window.removeEventListener('mouseup', this.mouseUp);
   }
+  */
 
 
   touchStartTarget(e) {
