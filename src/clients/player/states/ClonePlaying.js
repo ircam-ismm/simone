@@ -39,10 +39,6 @@ export default class ClonePlaying extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     }
 
-    // Waveform display
-    this.waveformWidth = 800;
-    this.waveformHeightSource = 200;
-    this.waveformHeightTarget = 150;
 
     this.targetPlayerState = this.context.participant;
   }
@@ -77,9 +73,15 @@ export default class ClonePlaying extends State {
     });
 
     // Waveform display
-    this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidth, false, true);
-    this.targetDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, true, true, true);
-    this.recorderDisplay = new WaveformDisplay(this.waveformHeightTarget, this.waveformWidth, false, false);
+    this.waveformWidthLarge = 1600;
+    this.waveformHeightLarge = 250;
+    this.waveformWidthRecorder = 800;
+    this.waveformHeightRecorder = 100;
+    this.waveformWidthSource = 800;
+    this.waveformHeightSource = 140;
+    this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
+    this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
 
     // Callback for when selection on the display is modified
     this.targetDisplay.setCallbackSelectionChange((start, end) => {
@@ -265,6 +267,250 @@ export default class ClonePlaying extends State {
     this.render();
   }
 
+  render() {
+    return html`
+      <!-- Name and message bar -->
+      <div style="
+        height: 100px;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+      "  
+      >
+        <h1> ${this.context.participant.get('name')} [id: ${this.context.checkinId}] </h1>
+        <div style="margin-left: 20px; width: 300px;">
+          <h3>Message from experimenter</h3>
+          <p id="messageBox"></p>
+        </div>
+      </div>
+
+
+      <!-- Recorder and source -->
+      <div style="
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 50px;
+      "
+      >
+        <div style="width: 800px">
+          <h2>record target</h2>
+          <div style="position: relative">
+            ${this.recorderDisplay.render()}
+            <sc-record
+              style="
+                position: absolute;
+                bottom: 2px; 
+                left: 2px;
+              "
+              height="40"
+              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+            ></sc-record>
+          </div>
+          <sc-button
+            width="${this.waveformWidthRecorder}"
+            height="39"
+            text="↓ use as target ↓"
+            selected
+            @input="${e => {
+              this.setTargetFile(this.recordedBuffer);
+            }}"
+          ></sc-button>
+        </div>
+        
+        <div style="width: 800px;">
+          <h2>source</h2>
+          <div style="position: relative;">
+            ${this.sourceDisplay.render()}
+            <sc-transport
+              id="transport-source"
+              style="
+                position: absolute;
+                bottom: 2px;
+                left: 2px;
+              "
+              buttons="[play, stop]"
+              height="40"
+              @change="${e => this.transportSourceFile(e.detail.value)}"
+            ></sc-transport>
+          </div>    
+        </div>
+      </div>
+
+      <!-- Control panel -->
+      <div style="
+        margin: 20px 50px;
+        padding: 10px 10px 50px 10px;
+        background-color: #525c68;
+      "
+      > 
+        <div style="
+          margin: 0px auto;
+          display: table; 
+        "
+        >
+          <h2>target</h2>
+          <div style="position: relative;">
+            ${this.targetDisplay.render()}
+            <sc-transport
+              style="
+                position: absolute;
+                bottom: 4px;
+                left: 2px;
+              "
+              id="transport-mosaicing"
+              buttons="[play, stop]"
+              width="60"
+              @change="${e => this.transportMosaicing(e.detail.value)}"
+            ></sc-transport>
+          </div>
+
+          <!-- Sliders -->
+          <div style="
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+          "
+          >
+            <div>
+              <!-- volume -->
+              <div>
+                <h3>volume (dB)</h3>
+                <div>
+                  <sc-slider
+                    id="slider-volume"
+                    min="-60"
+                    max="0"
+                    value="${this.context.participant.get('volume')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.volume = decibelToLinear(e.detail.value);
+                      this.context.participant.set({volume: e.detail.value});
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.volume) {
+                        this.previousValues.volume = this.currentValues.volume;
+                        this.currentValues.volume = e.detail.value;
+                      }
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('volume')}"
+                  >
+                </div>
+              </div>
+                 
+              <!-- detune -->
+              <div>
+                <h3>detune</h3>
+                <div>
+                  <sc-slider
+                    id="slider-detune"
+                    min="-24"
+                    max="24"
+                    value="${this.context.participant.get('detune')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.detune = e.detail.value * 100;
+                      this.context.participant.set({ detune: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.detune) {
+                        this.previousValues.detune = this.currentValues.detune;
+                        this.currentValues.detune = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('detune')}"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <!-- grain period -->
+              <div>
+                <h3>grain period</h3>
+                <div>
+                  <sc-slider
+                    id="slider-grainPeriod"
+                    min="0.01"
+                    max="0.3"
+                    value="${this.context.participant.get('grainPeriod')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.analyzerEngine.setPeriod(e.detail.value);
+                      this.synthEngine.setGrainPeriod(e.detail.value);
+                      this.context.participant.set({ grainPeriod: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.grainPeriod) {
+                        this.previousValues.grainPeriod = this.currentValues.grainPeriod;
+                        this.currentValues.grainPeriod = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('grainPeriod')}"
+                  >
+                </div>
+              </div>
+
+              <!-- grain duration -->
+              <div>
+                <h3>grain duration</h3>
+                <div>
+                  <sc-slider
+                    id="slider-grainDuration"
+                    min="0.02"
+                    max="0.5"
+                    value="${this.context.participant.get('grainDuration')}"
+                    width="600"
+                    display-number
+                    @input="${e => {
+                      this.synthEngine.setGrainDuration(e.detail.value);
+                      this.context.participant.set({ grainDuration: e.detail.value });
+                    }}"
+                    @change="${e => {
+                      if (e.detail.value !== this.currentValues.grainDuration) {
+                        this.previousValues.grainDuration = this.currentValues.grainDuration;
+                        this.currentValues.grainDuration = e.detail.value;
+                      }
+                      const now = Date.now();
+                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
+                    }}"
+                  ></sc-slider>
+                  <sc-button
+                    width="150"
+                    text="previous value"
+                    @input="${e => this.switchValueSlider('grainDuration')}"
+                  >
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      
+      </div>
+
+    `
+  }
+
+  /*
   render() {
     return html`
         <div style="padding: 20px">
@@ -498,5 +744,7 @@ export default class ClonePlaying extends State {
 
       `
   }
+  */
+
 }
 

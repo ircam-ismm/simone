@@ -15,6 +15,6 @@
     },
   },
 
-  system: 'drum-machine',
+  system: 'solar-system',
   nPlayers: 100,
 }

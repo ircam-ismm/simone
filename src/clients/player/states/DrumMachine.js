@@ -77,15 +77,12 @@ export default class DrumMachine extends State {
     });
 
     // Waveforms display
-    console.log(document.body.clientWidth);
-    const documentWidth = document.body.clientWidth;
     this.waveformWidthLarge = 1600;
     this.waveformHeightLarge = 250;
     this.waveformWidthRecorder = 800;
     this.waveformHeightRecorder = 100;
     this.waveformWidthSource = 540;
     this.waveformHeightSource = 140;
-    console.log(documentWidth, this.waveformWidthLarge, this.waveformHeightLarge)
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
     this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, false);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
@@ -358,7 +355,7 @@ export default class DrumMachine extends State {
             <sc-record
               style="
                 position: absolute;
-                bottom: 2px; 
+                bottom: 4px; 
                 left: 2px;
               "
               height="40"
@@ -369,6 +366,7 @@ export default class DrumMachine extends State {
             width="${this.waveformWidthRecorder}"
             height="39"
             text="↓ use as target ↓"
+            selected
             @input="${e => {
               this.setTargetFile(this.recordedBuffer);
             }}"
@@ -394,7 +392,7 @@ export default class DrumMachine extends State {
               id="transport-source"
               style="
                 position: absolute;
-                bottom: 2px;
+                bottom: 4px;
                 left: 260px;
               "
               buttons="[play, stop]"
@@ -409,7 +407,7 @@ export default class DrumMachine extends State {
       <div style="
         margin: 20px 50px;
         padding: 10px 10px 50px 10px;
-        background-color: #232323;
+        background-color: #525c68;
       "
       > 
         <div style="
@@ -423,7 +421,7 @@ export default class DrumMachine extends State {
             <sc-transport
               style="
                 position: absolute;
-                bottom: 2px;
+                bottom: 4px;
                 left: 2px;
               "
               id="transport-mosaicing"
@@ -434,7 +432,7 @@ export default class DrumMachine extends State {
             <sc-button
               style="
                 position: absolute;
-                bottom: 2px;
+                bottom: 4px;
                 right: 70px;
               "
               width="60"
@@ -445,7 +443,7 @@ export default class DrumMachine extends State {
             <sc-button
               style="
                 position: absolute;
-                bottom: 2px;
+                bottom: 4px;
                 right: 5px;
               "
               width="60"

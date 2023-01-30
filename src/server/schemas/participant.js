@@ -39,7 +39,7 @@ export default {
   },
   grainPeriod: {
     type: 'float',
-    default: 0.05,
+    default: 0.1,
   },
   grainDuration: {
     type: 'float',
