@@ -115,7 +115,7 @@ export default class DrumMachine extends State {
       }
       if (type === "analyze-target") {
         this.analyzerEngine.setTarget(this.currentTarget);
-        this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
+        this.analyzerEngine.setNorm(data.means, data.std, data.minRms, data.maxRms); // values for normalization of data
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
         this.targetDisplay.setSelectionStartTime(0);
@@ -160,6 +160,30 @@ export default class DrumMachine extends State {
       density: this.context.participant.get('density'),
     };
     this.previousValues = {...this.currentValues};
+
+    const sourceBuffer = this.context.audioBufferLoader.data[`monteverdi.wav`];
+    this.currentSource = sourceBuffer;
+    if (sourceBuffer) {
+      this.worker.postMessage({
+        type: 'analyze-source',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: sourceBuffer.getChannelData(0),
+        }
+      });
+    }
+
+    const targetBuffer = this.context.audioBufferLoader.data[`bayle.wav`];
+    this.currentTarget = targetBuffer;
+    if (targetBuffer) {
+      this.worker.postMessage({
+        type: 'analyze-target',
+        data: {
+          analysisInitData: this.analysisData,
+          buffer: targetBuffer.getChannelData(0),
+        }
+      });
+    }
   } 
 
   setSourceFile(sourceBuffer) {

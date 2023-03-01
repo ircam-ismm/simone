@@ -112,7 +112,7 @@ export default class Simplified extends State {
       }
       if (type === "analyze-target") {
         this.analyzerEngine.setTarget(this.currentTarget);
-        this.analyzerEngine.setNorm(data.means, data.std); // values for normalization of data
+        this.analyzerEngine.setNorm(data.means, data.std, data.minRms, data.maxRms); // values for normalization of data
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
         this.selectionStart = 0;

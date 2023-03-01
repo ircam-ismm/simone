@@ -10,7 +10,7 @@ addEventListener('message', e => {
     console.log('begin analysis');
     const init = data.analysisInitData;
     const analyzer = new Mfcc(init.mfccBands, init.mfccCoefs, init.mfccMinFreq, init.mfccMaxFreq, init.frameSize, init.sampleRate);
-    const [mfccFrames, times, means, std] = analyzer.computeBufferMfcc(data.buffer, init.hopSize);
+    const [mfccFrames, times, means, std, minRms, maxRms] = analyzer.computeBufferMfcc(data.buffer, init.hopSize);
     postMessage({
       type,
       data: {
@@ -18,6 +18,8 @@ addEventListener('message', e => {
         times,
         means, 
         std,
+        minRms,
+        maxRms,
       }
     });
   }
@@ -53,11 +55,15 @@ class Mfcc {
     const means = new Float32Array(this.nbrCoefs);
     const std = new Float32Array(this.nbrCoefs);
     const data = new Float32Array(this.frameSize);
+    let maxRms = 0;
+    let minRms = 10000;
 
     for (let i = 0; i < channelData.length; i += hopSize) {
       const frame = channelData.subarray(i, i + this.frameSize);
+      let frameRms = 0;
       for (let j = 0; j < frame.length; j++) {
         data[j] = frame[j];
+        frameRms += frame[j]**2;
       }
       for (let j = frame.length; j < this.frameSize; j++) {
         data[j] = 0;
@@ -68,6 +74,13 @@ class Mfcc {
       for (let j = 0; j < this.nbrCoefs; j++) {
         means[j] += cepsFrame[j];
       }
+      frameRms = Math.sqrt(frameRms/frame.length);
+      if (frameRms > maxRms) {
+        maxRms = frameRms;
+      } 
+      if (frameRms < minRms) {
+        minRms = frameRms;
+      } 
     }
     for (let j = 0; j < this.nbrCoefs; j++) {
       means[j] /= mfccFrames.length;
@@ -89,7 +102,7 @@ class Mfcc {
       }
     }
     console.log('analysis done');
-    return [mfccFrames, times, means, std];
+    return [mfccFrames, times, means, std, minRms, maxRms];
   }
 }
 

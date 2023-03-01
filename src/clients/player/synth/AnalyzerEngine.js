@@ -22,9 +22,11 @@ class AnalyzerEngine {
     this.periodRand = 0.004;
   }
 
-  setNorm(means, std) {
+  setNorm(means, std, minRms, maxRms) {
     this.means = means;
     this.std = std;
+    this.minRms = minRms;
+    this.maxRms = maxRms;
   }
 
   setTarget(targetBuffer) {
@@ -69,14 +71,28 @@ class AnalyzerEngine {
     if (this.active && this.target) {
       const targetData = this.target.getChannelData(0);
       const idx = Math.floor(this.transportTime*this.sampleRate);
-      const length = this.frameSize*this.sampleRate;
-      const grain = targetData.slice(idx, idx+length);
+      const grain = targetData.slice(idx, idx+this.frameSize);
+      // compute mfcc
       const grainMfcc = this.mfcc.get(grain);
       for (let j = 0; j < 12; j++) {
         grainMfcc[j] = (grainMfcc[j] - this.means[j]) / this.std[j];
       }
+      //compute rms
+      let grainRms = 0;
+      for (let j = 0; j < grain.length; j++) {
+        grainRms += grain[j]**2;
+      }
+      grainRms = Math.sqrt(grainRms/grain.length);
+      if (this.maxRms === 0) {
+        grainRms = 0;
+      } else {
+        grainRms = (grainRms - this.minRms)/(this.maxRms - this.minRms);
+      }
+      
+      grainRms = Math.max(Math.min(grainRms, 1), 0);
 
-      this.dataDestination.set({ mosaicingData: grainMfcc });
+
+      this.dataDestination.set({ mosaicingData: [grainMfcc, grainRms] });
 
       if (this.advanceCallback) {
         this.advanceCallback(this.transportTime / this.target.duration);

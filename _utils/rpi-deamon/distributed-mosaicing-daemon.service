@@ -1,0 +1,18 @@
+[Unit]
+Description=Launch distributed-mosaicing application
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=idle
+ExecStartPre=/bin/sh -c 'while ! ping -c1 10.10.0.1; do sleep 1; done'
+ExecStart=/usr/bin/node /home/pi/distributed-mosaicing/.build/clients/thing/index.js
+WorkingDirectory=/home/pi/distributed-mosaicing
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+Group=audio
+
+[Install]
+WantedBy=multi-user.target
