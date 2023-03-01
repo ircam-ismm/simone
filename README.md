@@ -1,28 +1,57 @@
-# `soundworks-template`
+# _Simone_
 
-> Project template for developing [*soundworks*](https://github.com/collective-soundworks/soundworks/) applications.
+_Simone_ is a set of web interfaces for collective (local-)networked improvisation.
 
-_For a complete documentation of *soundworks*, please refer to [http://collective-soundworks.github.io](http://collective-soundworks.github.io)_
+_Simone_ is a distributed instrument based on 2 concepts : using the microphone in the sound synthesis process, using the network to share information between users.
 
-## Creating a new application
+_Simone_ was developped using the [*soundworks*](https://github.com/collective-soundworks/soundworks/) framework.
 
-```sh
-git clone https://github.com/collective-soundworks/soundworks-template.git my-application
-cd my-application
-rm -Rf .git
+
+## Installation
+
+Install `Node.js` (LTS version)
+
+Download the application 
+
+Clone the repo or download it to the location you want on your computer then in the terminal: 
+
+```
+cd /path/to/simone
 npm install
-npm run dev
+npm run build
 ```
 
-## Internal tools
+## Starting the server
 
-### `@soundworks/template-build`
+```
+npm run start
+```
 
-The [`@soundworks/template-build`](https://github.com/collective-soundworks/soundworks-template-build) package contains all the build scripts for the `soundworks-template`
+This should start the server and prints several IP adresses like this: 
 
-### `@soundworks/template-helpers`
+```
++ https server listening on
+    https://127.0.0.1:8000
+    https://XXX.XXX.XXX.XXX:8000
+```
 
-The [`@soundworks/template-helpers`](https://github.com/collective-soundworks/soundworks-template-helpers) package contains common helpers (views, etc.) shared by most the applications.
+## Accessing a client
+
+To access a client open your favorite web browser on your device (preferably Firefox or Chrome, latest version).
+
+Then go to the address written in the terminal (the first one will only work on the device that started the server).
+
+You'll have to give access to the microphone.
+
+## Variations 
+
+_Simone_ offers various improvisation scenarii that differ in the type of information shared by users and the role they assume.
+
+###
+
+
+
+
 
 ## License
 
