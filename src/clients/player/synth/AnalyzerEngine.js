@@ -100,20 +100,26 @@ class AnalyzerEngine {
     }
 
 
-    this.transportTime += this.period;
+    let period = this.period;
+    const transportTime = this.transportTime;
     const loopDuration = this.endTime - this.startTime;
+    
+    this.transportTime += this.period;
+
     if (this.transportTime < this.startTime) {
       while (this.transportTime < this.startTime) {
         this.transportTime += loopDuration;
       }
     }
     if (this.transportTime > this.endTime) {
-      while (this.transportTime > this.endTime) {
-        this.transportTime -= loopDuration;
-      }
+      this.transportTime = this.startTime;
+      period = this.endTime - transportTime;
+      // while (this.transportTime > this.endTime) {
+      //   this.transportTime -= loopDuration;
+      // }
     }
 
-    return time + this.period;
+    return time + period;
   }
 };
 
