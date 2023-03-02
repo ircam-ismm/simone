@@ -11,8 +11,6 @@ _Simone_ was developped using the [*soundworks*](https://github.com/collective-s
 
 Install `Node.js` (LTS version)
 
-Download the application 
-
 Clone the repo or download it to the location you want on your computer then in the terminal: 
 
 ```
