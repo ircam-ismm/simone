@@ -89,6 +89,8 @@ You can select which variation will start by changing the `system` line in the f
 
 Available variations : `drum-machine`, `clone`, `solar-system`.
 
+![](./doc/variations.png)
+
 ### Drum machine
 In this variation, users all share a synchronized clock and rythmic grid to form a collective drum machine. The loop section lengths are constrained to fit on a common grid.
 
