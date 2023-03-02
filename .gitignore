@@ -20,4 +20,5 @@ Thumbs.db
 
 # 
 /soundbank/*
+!/soundbank/.gitkeep
 /logs/*
