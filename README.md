@@ -95,10 +95,14 @@ In this variation, users all share a synchronized clock and rythmic grid to form
 ### Clone
 In this variation, users start by recording a sound with their microphone. This sound is then sent to another user to be used as their _source_ sound, instead of using the soundbank. Each user must then learn to play with the voice of another user.
 
+!! You will absolutely need to set the number of players in the `simone/config/application.json` file or you won't be able to proceed to the playing interface after each player has recorded a sound.
+
 ### Solar system
 In this variation, users are put in an asymetric configuration. 
 
 One of them must assume a central role and is called the _sun_. The others are called _satellites_.
+
+To access the _sun_ interface, you will need to go to the following adress : `https://XXX.XXX.XXX.XXX:8000/#omega`.
 
 The _sun_ can record a _target_ sound with the microphone. The data from this _target_ sound is then simultaneously sent to all the _satellites_ to control their sound synthesis. Each _satellite_ can choose its own _source_ sound as well as use the various control sliders. 
 
