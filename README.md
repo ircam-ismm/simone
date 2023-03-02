@@ -43,11 +43,28 @@ Then go to the address written in the terminal (the first one will only work on 
 
 You'll have to give access to the microphone.
 
+## How it works 
+
+By default the interface should look like this.
+
+
+
 ## Variations 
 
 _Simone_ offers various improvisation scenarii that differ in the type of information shared by users and the role they assume.
 
-###
+You can select which variation will start by changing the `system` line in the file `simone/config/application.json`.
+
+Available variations : `drum-machine`, `clone`, `solar-system`.
+
+### Drum machine
+In this variation, users all share a synchronized clock and rythmic grid to form a collective drum machine.
+
+### Clone
+In this 
+
+
+### Solar system
 
 
 
