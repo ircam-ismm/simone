@@ -206,7 +206,7 @@ export default class SolarSystemOmegaSolo extends State {
         margin: 20px 50px;
       "
       >
-        <div style="width: 1200px">
+        <div>
           <h2>record target</h2>
           <div style="position: relative">
             ${this.recorderDisplay.render()}
