@@ -11,8 +11,6 @@ _Simone_ was developped using the [*soundworks*](https://github.com/collective-s
 
 Install `Node.js` (LTS version)
 
-Download the application 
-
 Clone the repo or download it to the location you want on your computer then in the terminal: 
 
 ```
@@ -88,6 +86,8 @@ _Simone_ offers various improvisation scenarii that differ in the type of inform
 You can select which variation will start by changing the `system` line in the file `simone/config/application.json`.
 
 Available variations : `drum-machine`, `clone`, `solar-system`.
+
+![](./doc/variations.png)
 
 ### Drum machine
 In this variation, users all share a synchronized clock and rythmic grid to form a collective drum machine. The loop section lengths are constrained to fit on a common grid.
