@@ -56,7 +56,8 @@ class SynthEngineNode {
   }
   
   postData(x) {
-    this.currGrain = x;
+    this.currGrainMfcc = x[0];
+    this.currGrainRms = x[1];
   }
 
   connect(dest) {
@@ -75,15 +76,19 @@ class SynthEngineNode {
     time = Math.max(time, this.audioContext.currentTime);
     // playing sound part
     // get closest grain index from kdTree
-    if (this.currGrain && this.kdTree && this.playing) {
-      const target = this.kdTree.nn(this.currGrain);
+    if (this.currGrainMfcc && this.kdTree && this.playing) {
+      const target = this.kdTree.nn(this.currGrainMfcc);
       const timeOffset = this.times[target];
 
       const rand = Math.random() * this.jitter;
       const now = time + rand;
 
+      const rmsGain = new GainNode(this.audioContext);
+      rmsGain.connect(this.output);
+      rmsGain.gain.value = this.currGrainRms;
+
       const env = new GainNode(this.audioContext);
-      env.connect(this.output);
+      env.connect(rmsGain);
       env.gain.value = 0;
       env.gain.setValueAtTime(0, now);
       env.gain.linearRampToValueAtTime(1, now + (this.grainDuration / 2));
