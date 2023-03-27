@@ -57,9 +57,9 @@ export default class SolarSystemOmegaSolo extends State {
     });
 
     // Waveform display
-    this.waveformWidthLarge = 1600;
+    this.waveformWidthLarge = window.innerWidth - (100 * 2);
     this.waveformHeightLarge = 250;
-    this.waveformWidthRecorder = 1200;
+    this.waveformWidthRecorder = window.innerWidth - 100;
     this.waveformHeightRecorder = 100;
     this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
