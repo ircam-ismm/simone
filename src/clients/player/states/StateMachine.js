@@ -5,11 +5,11 @@ import SolarSystemOmega from './SolarSystemOmega.js';
 import SolarSystemOmegaSolo from './SolarSystemOmegaSolo.js';
 import SolarSystemDispatch from './SolarSystemDispatch.js';
 import NoMicrophone from './NoMicrophone.js';
-import PerformanceState from './PerformanceState.js';
 import ClonePlaying from './ClonePlaying.js';
 import CloneRecording from './CloneRecording.js';
 import CloneWaiting from './CloneWaiting.js';
 import Simplified from './Simplified.js';
+import Solo from './Solo.js';
 
 const states = {
   'drum-machine': DrumMachine,
@@ -24,7 +24,7 @@ const states = {
   'solar-system-omega': SolarSystemOmega,
   'solar-system-omega-solo': SolarSystemOmegaSolo,
   'no-microphone': NoMicrophone,
-  'performance': PerformanceState,
+  'solo': Solo,
   'simplified': Simplified,
 };
 

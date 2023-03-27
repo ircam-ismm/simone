@@ -259,7 +259,7 @@ export default class Simplified extends State {
             ></sc-record>
 
             <h2 style="position: absolute; left: 60px">
-              1. Enregistrez un son
+              1. Record sound
             </h2>
           </div>
 
@@ -275,7 +275,7 @@ export default class Simplified extends State {
             <sc-button
               height="40";
               width="150";
-              text="2. Charger le son"
+              text="2. Load sound"
               @input="${e => {
                 this.setTargetFile(this.recordedBuffer);
               }}"
@@ -305,7 +305,7 @@ export default class Simplified extends State {
                 width="50"
                 @change="${e => this.transportMosaicing(e.detail.value)}"
               ></sc-transport>
-              <h2>3. Appuyez sur play</h2>
+              <h2>3. Play</h2>
             </div>
 
           </div>
@@ -315,7 +315,7 @@ export default class Simplified extends State {
           </div>
 
           <div style="font-size: small;">
-            <p>selectionner à la souris une section à faire boucler : clic gauche (laissez appuyé) puis glisser</p>
+            <p>select a loop by right-clicking on the waveform</p>
           </div>
 
           <div style="display: flex; margin-top: 20px">
@@ -335,7 +335,7 @@ export default class Simplified extends State {
             </div>
 
             <div style="margin-right: 40px">
-              <h2>hauteur</h2>
+              <h2>pitch</h2>
               <sc-slider
                 id="slider-detune"
                 min="-24"
@@ -353,13 +353,13 @@ export default class Simplified extends State {
                   font-size: small;
                 "
               >
-                <p>grave</p>
-                <p>aigu</p>
+                <p>low-pitched</p>
+                <p>high-pitched</p>
               </div>
             </div>
 
             <div style="margin-right: 30px">
-              <h2>densité</h2>
+              <h2>density</h2>
               <sc-slider
                 id="slider-density"
                 min="0"

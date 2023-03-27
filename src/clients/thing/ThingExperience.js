@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Worker from 'web-worker';
 import { GainNode, DynamicsCompressorNode } from 'node-web-audio-api';
+import { execSync } from 'node:child_process';
 
 class ThingExperience extends AbstractExperience {
   constructor(client, config, audioContext) {
@@ -156,6 +157,10 @@ class ThingExperience extends AbstractExperience {
       }
       if ('grainDuration' in updates) {
         this.synthEngine.setGrainDuration(updates.grainDuration);
+      }
+      if ('reboot' in updates) {
+        console.log('rebooting');
+        execSync('sudo reboot now');
       }
     });
 

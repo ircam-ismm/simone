@@ -262,6 +262,7 @@ export default class SolarSystemOmegaSolo extends State {
             ${Object.entries(this.players).map(([name, state]) => { 
               return html`
                 <div style="
+                  position: relative;
                   padding: 5px 2px;
                   width: 370px;
                   background-color: #1c1c1c;
@@ -272,6 +273,20 @@ export default class SolarSystemOmegaSolo extends State {
                 "
                 >
                   <h1>${name}</h1>
+                  <div style="
+                    position:absolute;
+                    top: 10px;
+                    right: 10px;
+                  "
+                  >
+                    <sc-button
+                      width="70"
+                      text="reboot"
+                      @input="${e => {
+                        state.set({reboot: true});
+                      }}"
+                    ></sc-button>
+                  </div>
                   <div style="
                     display: flex;
                     width: inherit;

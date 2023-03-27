@@ -69,5 +69,10 @@ export default {
     type: 'string',
     default: '',
     event: true,
+  },
+  reboot: {
+    type: 'boolean',
+    default: false,
+    envent: true,
   }
 };

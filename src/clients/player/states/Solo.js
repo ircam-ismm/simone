@@ -14,7 +14,7 @@ import State from './State.js';
 import { html } from 'lit/html.js';
 import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
-export default class DrumMachine extends State {
+export default class Solo extends State {
   constructor(name, context) {
     super(name, context);
 
@@ -39,12 +39,7 @@ export default class DrumMachine extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     }
 
-    // Mosaicing
-    this.bpm = 120; 
-    this.nFramesBeat = 8; // initial length of the looping section (in number of frames)
-    this.selectionLength = this.nFramesBeat*this.frameSize/44100;
-    this.maxNFramesBeat = 64 // maximum length of looping section (in n of frames)
-  }
+    }
 
   async enter() {
     // Microphone handling
@@ -84,7 +79,7 @@ export default class DrumMachine extends State {
     this.waveformWidthSource = 540;
     this.waveformHeightSource = 140;
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
-    this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, false);
+    this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
 
     // Callback for when selection on the display is moved
@@ -118,8 +113,9 @@ export default class DrumMachine extends State {
         this.analyzerEngine.setNorm(data.means, data.std, data.minRms, data.maxRms); // values for normalization of data
         this.targetDisplay.setBuffer(this.currentTarget);
         // setting looping section back to 0
-        this.targetDisplay.setSelectionStartTime(0);
-        this.targetDisplay.setSelectionLength(this.nFramesBeat * this.frameSize / this.sampleRate);
+        this.selectionStart = 0;
+        this.selectionEnd = this.currentTarget.duration;
+        this.analyzerEngine.setLoopLimits(this.selectionStart, this.selectionEnd);
       }
     });
 
@@ -235,19 +231,11 @@ export default class DrumMachine extends State {
   }
 
   transportMosaicing(state) {
-    // Callback for handling transport buttons for mosaicing
     const now = Date.now();
     switch (state) {
       case 'play':
-        // Mosaicing must start at a time synced with the other players
-        const beatLength = this.nFramesBeat * this.frameSize / this.sampleRate;
-        const currentSyncTime = this.context.sync.getSyncTime();
-        const nextStartTime = Math.ceil(currentSyncTime / beatLength) * beatLength;
-        const nextStartTimeLocal = this.context.sync.getLocalTime(nextStartTime);
-        this.scheduler.defer(() => {
-          this.analyzerEngine.start();
-          this.synthEngine.start();
-        }, nextStartTimeLocal);
+        this.analyzerEngine.start();
+        this.synthEngine.start();
         this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
@@ -258,28 +246,6 @@ export default class DrumMachine extends State {
     }
   }
 
-  changeSelectionLength(type) {
-    // Callback for changing length of looping section (*2 or /2)
-    if (type === 'longer') {
-      const newLength = this.selectionLength * 2;
-      // New looping section must not go out of bounds and is cannot exceed max value
-      if (this.nFramesBeat * 2 <= this.maxNFramesBeat && this.selectionStart + newLength < this.currentTarget.duration) {
-        this.nFramesBeat *= 2;
-        this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
-        this.targetDisplay.setSelectionLength(this.selectionLength);
-        this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
-      }
-    } else {
-      // New looping section must not last less than a frame long
-      if (this.nFramesBeat / 2 >= 1) {
-        this.nFramesBeat /= 2;
-        this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
-        this.targetDisplay.setSelectionLength(this.selectionLength);
-        this.context.writer.write(`Set selection shorter. N frames per loop : ${this.nFramesBeat}`);
-      }
-
-    }
-  }
 
   densityToGrain(density) {
     const period = -0.18 * density + 0.2;
@@ -431,28 +397,6 @@ export default class DrumMachine extends State {
               width="60"
               @change="${e => this.transportMosaicing(e.detail.value)}"
             ></sc-transport>
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 4px;
-                right: 70px;
-              "
-              width="60"
-              height="60"
-              text="*2"
-              @input="${e => this.changeSelectionLength("longer")}"
-            ></sc-button>
-            <sc-button
-              style="
-                position: absolute;
-                bottom: 4px;
-                right: 5px;
-              "
-              width="60"
-              height="60"
-              text="/2"
-              @input="${e => this.changeSelectionLength("smaller")}"
-            ></sc-button>
           </div>
 
           <!-- Sliders -->
