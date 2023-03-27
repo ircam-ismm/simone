@@ -82,7 +82,6 @@ class SynthEngine {
     if (this.currGrainMfcc && this.playing && this.kdTree) {
       const target = this.kdTree.nn(this.currGrainMfcc);
       const timeOffset = this.times[target];
-      console.log(target);
 
       const rand = Math.random() * this.jitter;
       const now = time + rand;
