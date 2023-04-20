@@ -4,6 +4,7 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
+import '@ircam/simple-components/sc-clock.js';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -39,6 +40,8 @@ export default class ClonePlaying extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     }
 
+    this.recording = false;
+    this.recTime = 0;
 
     this.targetPlayerState = this.context.participant;
   }
@@ -73,11 +76,16 @@ export default class ClonePlaying extends State {
     });
 
     // Waveform display
-    this.waveformWidthLarge = 1600;
+    this.waveformWidthLarge = window.innerWidth - (100 * 2);
+    if (window.innerWidth < 1000) {
+      this.waveformWidthRecorder = window.innerWidth - 100;
+      this.waveformWidthSource = window.innerWidth - 100;
+    } else {
+      this.waveformWidthRecorder = this.waveformWidthLarge / 2;
+      this.waveformWidthSource = this.waveformWidthLarge / 2;
+    }
     this.waveformHeightLarge = 250;
-    this.waveformWidthRecorder = 800;
     this.waveformHeightRecorder = 100;
-    this.waveformWidthSource = 800;
     this.waveformHeightSource = 140;
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
     this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
@@ -271,6 +279,13 @@ export default class ClonePlaying extends State {
   }
 
   render() {
+    let sliderWidth;
+    if (window.innerWidth < 1000) {
+      sliderWidth = this.waveformWidthLarge - 160;
+    } else {
+      sliderWidth = (this.waveformWidthLarge - 30) / 2 - 160;
+    }
+
     return html`
       <!-- Name and message bar -->
       <div style="
@@ -292,10 +307,11 @@ export default class ClonePlaying extends State {
       <div style="
         display: flex;
         justify-content: space-between;
+        flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
         margin: 20px 50px;
       "
       >
-        <div style="width: 800px">
+        <div>
           <h2>record target</h2>
           <div style="position: relative">
             ${this.recorderDisplay.render()}
@@ -306,8 +322,27 @@ export default class ClonePlaying extends State {
                 left: 2px;
               "
               height="40"
-              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+              @change="${e => {
+                e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
+                this.recording = e.detail.value;
+                this.startRecTime = this.context.sync.getSyncTime();
+              }}"
             ></sc-record>
+            <sc-clock
+              style="
+                position: absolute;
+                bottom: 4px; 
+                left: 45px;
+              "
+              height="20"
+              width="150"
+              .getTimeFunction="${() => {
+                if (this.recording) {
+                  this.recTime = this.context.sync.getSyncTime() - this.startRecTime;
+                }
+                return this.recTime;
+            }}"
+            ></sc-clock>
           </div>
           <sc-button
             width="${this.waveformWidthRecorder}"
@@ -320,7 +355,7 @@ export default class ClonePlaying extends State {
           ></sc-button>
         </div>
         
-        <div style="width: 800px;">
+        <div>
           <h2>source</h2>
           <div style="position: relative;">
             ${this.sourceDisplay.render()}
@@ -372,6 +407,7 @@ export default class ClonePlaying extends State {
             margin-top: 20px;
             display: flex;
             justify-content: space-between;
+            flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
           "
           >
             <div>
@@ -384,7 +420,7 @@ export default class ClonePlaying extends State {
                     min="-60"
                     max="0"
                     value="${this.context.participant.get('volume')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.volume = decibelToLinear(e.detail.value);
@@ -414,7 +450,7 @@ export default class ClonePlaying extends State {
                     min="-24"
                     max="24"
                     value="${this.context.participant.get('detune')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.detune = e.detail.value * 100;
@@ -448,7 +484,7 @@ export default class ClonePlaying extends State {
                     min="0.01"
                     max="0.3"
                     value="${this.context.participant.get('grainPeriod')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.analyzerEngine.setPeriod(e.detail.value);
@@ -481,7 +517,7 @@ export default class ClonePlaying extends State {
                     min="0.02"
                     max="0.5"
                     value="${this.context.participant.get('grainDuration')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.setGrainDuration(e.detail.value);
@@ -504,250 +540,12 @@ export default class ClonePlaying extends State {
                 </div>
               </div>
             </div>
-
           </div>
-        </div>
-      
+        </div>      
       </div>
 
     `
   }
-
-  /*
-  render() {
-    return html`
-        <div style="padding: 20px">
-          <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
-        </div>
-
-        <div style="padding-left: 20px; padding-right: 20px">
-          <div style="display: flex">
-            <div>
-              <h3>Target</h3>
-
-              <div style="position: relative">
-                ${this.targetDisplay.render()}
-              </div>
-
-              <div style="position: relative">
-                ${this.recorderDisplay.render()}
-                <sc-record
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 10px;
-                  "
-                  @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-                ></sc-record>
-                <sc-transport
-                  id="transport-recorder"
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 45px;
-                  "
-                  buttons="[play, stop]"
-                  @change="${e => this.transportRecordFile(e.detail.value)}"
-                ></sc-transport>
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 110px;
-                  "
-                  height="29";
-                  width="140";
-                  text="send to target"
-                  @input="${e => {
-                    this.setTargetFile(this.recordedBuffer);
-                    const now = Date.now();
-                    this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
-                  }}"
-                ></sc-button>
-              </div>
-            </div>
-            <div style="margin-left: 20px">
-              <h3>Message from experimenter</h3>
-              <p id="messageBox"></p>
-            </div>
-          </div>
-
-
-
-          <div style="margin: 20px; padding: 20px; position: relative">
-
-            <div>
-              <h3>start mosaicing</h3>
-              <sc-transport
-                style="display: block"
-                id="transport-mosaicing"
-                buttons="[play, stop]"
-                width="50"
-                @change="${e => this.transportMosaicing(e.detail.value)}"
-              ></sc-transport>
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 150px;
-              "
-            >
-              <h3>volume (dB)</h3>
-              <sc-slider
-                min="-60"
-                max="0"
-                value="${this.context.participant.get('volume')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.volume = decibelToLinear(e.detail.value);
-                  this.context.participant.set({ volume: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.volume) {
-                    this.previousValues.volume = this.currentValues.volume;
-                    this.currentValues.volume = e.detail.value;
-                  }
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('volume')}"
-              >
-              </sc-button>
-
-              <h3>detune</h3>
-              <sc-slider
-                min="-24"
-                max="24"
-                value="${this.context.participant.get('detune')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.detune = e.detail.value * 100;
-                  this.context.participant.set({ detune: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.detune) {
-                    this.previousValues.detune = this.currentValues.detune;
-                    this.currentValues.detune = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('detune')}"
-              >
-              </sc-button>
-
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 570px;
-              "
-            >
-
-              <h3>grain period</h3>
-              <sc-slider
-                min="0.01"
-                max="0.1"
-                value="${this.context.participant.get('grainPeriod')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.analyzerEngine.setPeriod(e.detail.value);
-                  this.synthEngine.setGrainPeriod(e.detail.value);
-                  this.context.participant.set({ grainPeriod: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainPeriod) {
-                    this.previousValues.grainPeriod = this.currentValues.grainPeriod;
-                    this.currentValues.grainPeriod = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainPeriod')}"
-              >
-              </sc-button>
-
-              <h3>grain duration</h3>
-              <sc-slider
-                min="0.02"
-                max="0.5"
-                value="${this.context.participant.get('grainDuration')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.setGrainDuration(e.detail.value);
-                  this.context.participant.set({ grainDuration: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainDuration) {
-                    this.previousValues.grainDuration = this.currentValues.grainDuration;
-                    this.currentValues.grainDuration = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainDuration')}"
-              >
-              </sc-button>
-            </div>
-          </div>
-
-          <h3>Source</h3>
-          <div style="
-            display: inline;
-            position: relative;"
-          >
-            ${this.sourceDisplay.render()}
-            <p
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 0;
-              " 
-            >
-              preview :
-            </p>
-            <sc-transport
-              id="transport-source"
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 70px;
-              "
-              buttons="[play, stop]"
-              @change="${e => this.transportSourceFile(e.detail.value)}"
-            ></sc-transport>
-          </div>
-        </div>
-
-      `
-  }
-  */
 
 }
 

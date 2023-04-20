@@ -76,7 +76,6 @@ server.pluginManager.register('logger', pluginLoggerFactory, {
 server.stateManager.registerSchema('participant', participantSchema);
 server.stateManager.registerSchema('global', globalSchema);
 
-
 (async function launch() {
   try {
     await server.init(config, (clientType, config, httpRequest) => {

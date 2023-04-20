@@ -323,7 +323,7 @@ export default class Simplified extends State {
               <h2>volume</h2>
               <sc-slider
                 id="slider-volume"
-                min="-60"
+                min="-70"
                 max="0"
                 value="${this.context.participant.get('volume')}"
                 width="240"

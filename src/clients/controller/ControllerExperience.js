@@ -179,7 +179,7 @@ class ControllerExperience extends AbstractExperience {
                           left: 150px;
                         "
                         display-number
-                        min="-60"
+                        min="-70"
                         max="0"
                         value=${state.get('volume')}
                       ></sc-slider>

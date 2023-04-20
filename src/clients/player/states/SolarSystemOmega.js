@@ -4,6 +4,7 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
+import '@ircam/simple-components/sc-clock.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import AnalyzerEngine from '../synth/AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
@@ -36,6 +37,9 @@ export default class SolarSystemOmega extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     };
 
+    this.recording = false;
+    this.recTime = 0;
+
     this.targetPlayerState = this.context.participant;
   }
 
@@ -64,9 +68,9 @@ export default class SolarSystemOmega extends State {
     });
 
     // Waveform display
-    this.waveformWidthLarge = 1600;
+    this.waveformWidthLarge = window.innerWidth - (100 * 2);
     this.waveformHeightLarge = 250;
-    this.waveformWidthRecorder = 1200;
+    this.waveformWidthRecorder = window.innerWidth - 100;
     this.waveformHeightRecorder = 100;
     this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
     this.recorderDisplay = new WaveformDisplay(this.waveformHeightRecorder, this.waveformWidthRecorder, false, false);
@@ -210,33 +214,51 @@ export default class SolarSystemOmega extends State {
       <div style="
         display: flex;
         justify-content: center;
+        flex-direction: column;
         margin: 20px 50px;
       "
       >
-        <div style="width: 1200px">
-          <h2>record target</h2>
-          <div style="position: relative">
-            ${this.recorderDisplay.render()}
-            <sc-record
-              style="
-                position: absolute;
-                bottom: 4px; 
-                left: 2px;
-              "
-              height="40"
-              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-            ></sc-record>
-          </div>
-          <sc-button
-            width="${this.waveformWidthRecorder}"
-            height="39"
-            text="↓ use as target ↓"
-            selected
-            @input="${e => {
-              this.setTargetFile(this.recordedBuffer);
+        <h2>record target</h2>
+        <div style="position: relative">
+          ${this.recorderDisplay.render()}
+          <sc-record
+            style="
+              position: absolute;
+              bottom: 4px; 
+              left: 2px;
+            "
+            height="40"
+            @change="${e => {
+              e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
+              this.recording = e.detail.value;
+              this.startRecTime = this.context.sync.getSyncTime();
             }}"
-          ></sc-button>
+          ></sc-record>
+          <sc-clock
+            style="
+              position: absolute;
+              bottom: 4px; 
+              left: 45px;
+            "
+            height="20"
+            width="150"
+            .getTimeFunction="${() => {
+              if (this.recording) {
+                this.recTime = this.context.sync.getSyncTime() - this.startRecTime;
+              }
+              return this.recTime;
+          }}"
+          ></sc-clock>
         </div>
+        <sc-button
+          width="${this.waveformWidthRecorder}"
+          height="39"
+          text="↓ use as target ↓"
+          selected
+          @input="${e => {
+            this.setTargetFile(this.recordedBuffer);
+          }}"
+        ></sc-button>
       </div>
 
 
@@ -303,121 +325,11 @@ export default class SolarSystemOmega extends State {
               `  
             })}
           </div>
-
         </div>
-      
       </div>
     `
   }
 
-/*
-  render() {
-    return html`
-        <div style="padding: 20px">
-          <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
-        </div>
-
-        <div style="display: flex; padding-left: 20px; padding-right: 20px">
-          <div>
-            <h3>Target</h3>
-
-            <div style="position: relative">
-              ${this.targetDisplay.render()}
-            </div>
-
-            <div style="position: relative">
-              ${this.recorderDisplay.render()}
-              <sc-record
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 10px;
-                "
-                @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-              ></sc-record>
-              <sc-transport
-                id="transport-recorder"
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 45px;
-                "
-                buttons="[play, stop]"
-                @change="${e => this.transportRecordFile(e.detail.value)}"
-              ></sc-transport>
-              <sc-button
-                style="
-                  position: absolute;
-                  bottom: 10px;
-                  left: 110px;
-                "
-                height="29";
-                width="140";
-                text="send to target"
-                @input="${e => {
-                  this.setTargetFile(this.recordedBuffer);
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
-                }}"
-              ></sc-button>
-            </div>
-          </div>
-
-          <div
-            style="
-              width: 200px;
-              margin-left: 20px;
-            "
-          >
-            <h3>Players</h3>
-
-            <div>
-              ${Object.entries(this.players).map(([name, state]) => {
-                return html`
-                  <div style="
-                      display: flex;
-                      justify-content: space-around;
-                      align-items: center;
-                      margin-bottom: 20px;
-                      width: 200px;
-                    "
-                  >
-                    <h2>
-                      ${name}
-                    </h2>
-
-                    <sc-transport
-                      buttons="[play, stop]"
-                      width="50"
-                      @change="${e => {
-                        if (e.detail.value === 'play') {
-                          state.set({ mosaicingActive: true });
-                          const now = Date.now();
-                          this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
-                        } else {
-                          state.set({ mosaicingActive: false });
-                          const now = Date.now();
-                          this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
-                        }
-                      }}"
-                    ></sc-transport>
-                    </div>
-
-                  </div>
-                `;
-              })}
-            </div>
-          </div>
-
-          <div style="margin-left: 20px">
-            <h3>Message from experimenter</h3>
-            <p id="messageBox"></p>
-          </div>
-
-        </div>
-      `
-  }
-*/
 
 }
 

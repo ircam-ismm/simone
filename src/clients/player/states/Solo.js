@@ -4,6 +4,7 @@ import '@ircam/simple-components/sc-slider.js';
 import '@ircam/simple-components/sc-transport';
 import '@ircam/simple-components/sc-loop.js';
 import '@ircam/simple-components/sc-record.js';
+import '@ircam/simple-components/sc-clock.js';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -39,7 +40,10 @@ export default class Solo extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     }
 
-    }
+    this.recording = false;
+    this.recTime = 0;
+
+  }
 
   async enter() {
     // Microphone handling
@@ -72,11 +76,16 @@ export default class Solo extends State {
     });
 
     // Waveforms display
-    this.waveformWidthLarge = 1600;
+    this.waveformWidthLarge = window.innerWidth - (100 * 2);
+    if (window.innerWidth < 1000) {
+      this.waveformWidthRecorder = window.innerWidth - 100;
+      this.waveformWidthSource = window.innerWidth - 360;
+    } else {
+      this.waveformWidthRecorder = this.waveformWidthLarge / 2;
+      this.waveformWidthSource = this.waveformWidthLarge / 2 - 260;
+    }
     this.waveformHeightLarge = 250;
-    this.waveformWidthRecorder = 800;
     this.waveformHeightRecorder = 100;
-    this.waveformWidthSource = 540;
     this.waveformHeightSource = 140;
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
     this.targetDisplay = new WaveformDisplay(this.waveformHeightLarge, this.waveformWidthLarge, true, true, true);
@@ -292,6 +301,13 @@ export default class Solo extends State {
 
 
   render() {
+    let sliderWidth;
+    if (window.innerWidth < 1000) {
+      sliderWidth = this.waveformWidthLarge - 160;
+    } else {
+      sliderWidth = (this.waveformWidthLarge - 30) / 2 - 160;
+    }
+
     return html`
       <!-- Name and message bar -->
       <div style="
@@ -313,10 +329,11 @@ export default class Solo extends State {
       <div style="
         display: flex;
         justify-content: space-between;
+        flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
         margin: 20px 50px;
       "
       >
-        <div style="width: 800px">
+        <div>
           <h2>record target</h2>
           <div style="position: relative">
             ${this.recorderDisplay.render()}
@@ -327,8 +344,27 @@ export default class Solo extends State {
                 left: 2px;
               "
               height="40"
-              @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
+              @change="${e => {
+                e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
+                this.recording = e.detail.value;
+                this.startRecTime = this.context.sync.getSyncTime();
+              }}"
             ></sc-record>
+            <sc-clock
+              style="
+                position: absolute;
+                bottom: 4px; 
+                left: 45px;
+              "
+              height="20"
+              width="150"
+              .getTimeFunction="${() => {
+                if (this.recording) {
+                  this.recTime = this.context.sync.getSyncTime() - this.startRecTime;
+                }
+                return this.recTime;
+            }}"
+            ></sc-clock>
           </div>
           <sc-button
             width="${this.waveformWidthRecorder}"
@@ -341,7 +377,7 @@ export default class Solo extends State {
           ></sc-button>
         </div>
         
-        <div style="width: 800px;">
+        <div>
           <h2>select source</h2>
           <div style="position: relative;">
             <sc-file-tree
@@ -404,6 +440,7 @@ export default class Solo extends State {
             margin-top: 20px;
             display: flex;
             justify-content: space-between;
+            flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
           "
           >
             <div>
@@ -413,10 +450,10 @@ export default class Solo extends State {
                 <div>
                   <sc-slider
                     id="slider-volume"
-                    min="-60"
+                    min="-70"
                     max="0"
                     value="${this.context.participant.get('volume')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.volume = decibelToLinear(e.detail.value);
@@ -446,7 +483,7 @@ export default class Solo extends State {
                     min="-24"
                     max="24"
                     value="${this.context.participant.get('detune')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.detune = e.detail.value * 100;
@@ -480,7 +517,7 @@ export default class Solo extends State {
                     min="0.01"
                     max="0.3"
                     value="${this.context.participant.get('grainPeriod')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.analyzerEngine.setPeriod(e.detail.value);
@@ -513,7 +550,7 @@ export default class Solo extends State {
                     min="0.02"
                     max="0.5"
                     value="${this.context.participant.get('grainDuration')}"
-                    width="600"
+                    width="${sliderWidth}"
                     display-number
                     @input="${e => {
                       this.synthEngine.setGrainDuration(e.detail.value);

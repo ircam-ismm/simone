@@ -411,7 +411,7 @@ export default class DrumMachineContinuous extends State {
               <h3>volume (dB)</h3>
               <sc-slider
                 id="slider-volume"
-                min="-60"
+                min="-70"
                 max="0"
                 value="${this.context.participant.get('volume')}"
                 width="300"

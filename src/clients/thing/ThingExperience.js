@@ -177,7 +177,7 @@ class ThingExperience extends AbstractExperience {
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
               if ('volume' in updates) {
-                this.sunVolume.gain.value = decibelToLinear(updates.volume);
+                this.participant.set({ volume: updates.volume });
               }
               if ('detune' in updates) {
                 this.participant.set({detune: updates.detune});

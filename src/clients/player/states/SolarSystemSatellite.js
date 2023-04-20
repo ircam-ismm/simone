@@ -44,7 +44,8 @@ export default class SolarSystemSatellite extends State {
 
   async enter() {
     // Waveform display
-    this.waveformWidthSource = 1134;
+    this.controlPanelWidth = window.innerWidth - (150 * 2);
+    this.waveformWidthSource = this.controlPanelWidth - 250;
     this.waveformHeightSource = 150;
     this.sourceDisplay = new WaveformDisplay(this.waveformHeightSource, this.waveformWidthSource, false, true);
 
@@ -78,7 +79,6 @@ export default class SolarSystemSatellite extends State {
     this.busNode = new GainNode(this.context.audioContext);
     this.sunVolume = new GainNode(this.context.audioContext);
     
-
     this.outputNode.connect(this.context.globalVolume);
     this.sunVolume.connect(this.outputNode);
     this.busNode.connect(this.sunVolume);
@@ -123,7 +123,7 @@ export default class SolarSystemSatellite extends State {
       this.render();
     });
 
-    // find player Ω and subscribe to incoming data
+    // subscribe to controls from omega
     this.context.client.stateManager.observe(async (schemaName, stateId, nodeId) => {
       switch (schemaName) {
         case 'participant':
@@ -137,7 +137,16 @@ export default class SolarSystemSatellite extends State {
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
               if ('volume' in updates) {
-                this.sunVolume.gain.value = decibelToLinear(updates.volume);
+                this.context.participant.set({ volume: updates.volume });
+              }
+              if ('detune' in updates) {
+                this.context.participant.set({detune: updates.detune});
+              }
+              if ('grainPeriod' in updates) {
+                this.context.participant.set({ grainPeriod: updates.grainPeriod });
+              }
+              if ('grainDuration' in updates) {
+                this.context.participant.set({ grainDuration: updates.grainDuration });
               }
             });
           }
@@ -216,6 +225,12 @@ export default class SolarSystemSatellite extends State {
   }
 
   render() {
+    let sliderWidth;
+    if (window.innerWidth < 1000) {
+      sliderWidth = this.controlPanelWidth - 200;
+    } else {
+      sliderWidth = (this.controlPanelWidth - 400)/2;
+    }
     const mosaicingActive = this.context.participant.get('mosaicingActive');
     return html`
       <!-- Name and message bar -->
@@ -241,7 +256,7 @@ export default class SolarSystemSatellite extends State {
         margin: 20px 50px;
       "
       >
-        <div style="width: 1392px;">
+        <div>
           <h2>select source</h2>
           <div style="position: relative;">
             <sc-file-tree
@@ -273,9 +288,10 @@ export default class SolarSystemSatellite extends State {
 
       <!-- Control panel -->
       <div style="
-        margin: 20px 200px;
+        margin: auto;
         padding: 10px 20px 30px;
         background-color: #525c68;
+        width: ${this.controlPanelWidth}px
       "
       >
         <h2 style="
@@ -285,6 +301,7 @@ export default class SolarSystemSatellite extends State {
         </h2>
         <div style="
           display: flex;
+          flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
           justify-content: space-between;
         "
         >
@@ -295,10 +312,10 @@ export default class SolarSystemSatellite extends State {
               <div>
                 <sc-slider
                   id="slider-volume"
-                  min="-60"
+                  min="-70"
                   max="0"
                   value="${this.context.participant.get('volume')}"
-                  width="500"
+                  width="${sliderWidth}"
                   display-number
                   @input="${e => {
                     this.synthEngine.volume = decibelToLinear(e.detail.value);
@@ -328,7 +345,7 @@ export default class SolarSystemSatellite extends State {
                   min="-24"
                   max="24"
                   value="${this.context.participant.get('detune')}"
-                  width="500"
+                  width="${sliderWidth}"
                   display-number
                   @input="${e => {
                     this.synthEngine.detune = e.detail.value * 100;
@@ -362,7 +379,7 @@ export default class SolarSystemSatellite extends State {
                   min="0.01"
                   max="0.3"
                   value="${this.context.participant.get('grainPeriod')}"
-                  width="500"
+                  width="${sliderWidth}"
                   display-number
                   @input="${e => {
                     this.analyzerEngine.setPeriod(e.detail.value);
@@ -395,7 +412,7 @@ export default class SolarSystemSatellite extends State {
                   min="0.02"
                   max="0.5"
                   value="${this.context.participant.get('grainDuration')}"
-                  width="500"
+                  width="${sliderWidth}"
                   display-number
                   @input="${e => {
                     this.synthEngine.setGrainDuration(e.detail.value);
@@ -423,195 +440,5 @@ export default class SolarSystemSatellite extends State {
     `
   }
 
-  /*
-  render() {
-    return html`
-        <div style="padding: 20px">
-          <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
-        </div>
-
-        <div style="padding-left: 20px; padding-right: 20px">
-          <div style="display: flex;">
-            <div>
-              <h3>Source</h3>
-
-              <sc-file-tree
-                value="${JSON.stringify(this.context.soundbankTreeRender)}";
-                @input="${e => {
-                  this.context.participant.set({ sourceFileLoaded: false});
-                  this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
-                  this.context.participant.set({ sourceFilename : e.detail.value.name});
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
-                }}"
-              ></sc-file-tree>
-
-              <div style="
-                display: inline;
-                position: relative;"
-              >
-                ${this.sourceDisplay.render()}
-                <p
-                  style="
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                  " 
-                >
-                  preview :
-                </p>
-                <sc-transport
-                  id="transport-source"
-                  style="
-                    position: absolute;
-                    bottom: 0;
-                    left: 70px;
-                  "
-                  buttons="[play, stop]"
-                  @change="${e => this.transportSourceFile(e.detail.value)}"
-                ></sc-transport>
-              </div>
-            </div>
-            <div style="margin-left: 20px">
-              <h3>Message from experimenter</h3>
-              <p id="messageBox"></p>
-            </div>
-          </div>
-
-          <div style="margin: 20px; padding: 20px; position: relative">
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 0px;
-              "
-            >
-              <h3>volume (dB)</h3>
-              <sc-slider
-                min="-60"
-                max="0"
-                value="${this.context.participant.get('volume')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.volume = decibelToLinear(e.detail.value);
-                  this.context.participant.set({volume: e.detail.value});
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.volume) {
-                    this.previousValues.volume = this.currentValues.volume;
-                    this.currentValues.volume = e.detail.value;
-                  }
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('volume')}"
-              >
-              </sc-button>
-
-              <h3>detune</h3>
-              <sc-slider
-                min="-24"
-                max="24"
-                value="${this.context.participant.get('detune')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.detune = e.detail.value * 100;
-                  this.context.participant.set({ detune: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.detune) {
-                    this.previousValues.detune = this.currentValues.detune;
-                    this.currentValues.detune = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('detune')}"
-              >
-              </sc-button>
-
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 420px;
-              "
-            >
-              <h3>grain period</h3>
-              <sc-slider
-                min="0.01"
-                max="0.1"
-                value="${this.context.participant.get('grainPeriod')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.setGrainPeriod(e.detail.value);
-                  this.context.participant.set({ grainPeriod: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainPeriod) {
-                    this.previousValues.grainPeriod = this.currentValues.grainPeriod;
-                    this.currentValues.grainPeriod = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainPeriod')}"
-              >
-              </sc-button>
-
-              <h3>grain duration</h3>
-              <sc-slider
-                min="0.02"
-                max="0.5"
-                value="${this.context.participant.get('grainDuration')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.setGrainDuration(e.detail.value);
-                  this.context.participant.set({ grainDuration: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainDuration) {
-                    this.previousValues.grainDuration = this.currentValues.grainDuration;
-                    this.currentValues.grainDuration = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainDuration')}"
-              >
-              </sc-button>
-            </div>
-          </div>
-          
-
-        </div>
-      `
-  }
-  */
 }
 
