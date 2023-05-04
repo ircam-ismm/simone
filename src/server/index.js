@@ -1,6 +1,7 @@
 import 'source-map-support/register';
 import { Server } from '@soundworks/core/server';
 import path from 'path';
+import fs from 'fs';
 import serveStatic from 'serve-static';
 import compile from 'template-literal';
 
@@ -94,11 +95,37 @@ server.stateManager.registerSchema('global', globalSchema);
       };
     });
 
+    let presets 
+    try {
+      const presetsJSON = fs.readFileSync('presets/presets.json', 'utf8');
+      presets = JSON.parse(presets);
+    } catch (err) {
+      console.log('no presets.json file found in presets/');
+      presets = {}
+    }
+    
+    
 
     const global = await server.stateManager.create('global', {
       system: server.config.app.system,
       nPlayers: server.config.app.nPlayers,
+      presets: presets,
     });
+    
+
+    global.subscribe(update => {
+      if ("presets" in update) {
+        const presets = update.presets;
+        const presetsJson = JSON.stringify(presets);
+        fs.writeFile('presets/presets.json', presetsJson, 'utf8', (err) => {
+          if (err) {
+            console.log('could not write preset file', err);
+          } else {
+            console.log('preset file written successfully');
+          }
+        });
+      }
+    })
 
     const players = new Set(); 
 

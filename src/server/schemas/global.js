@@ -17,4 +17,9 @@ export default {
     type: 'any',
     default: ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ', 'ν', 'ξ', 'ο', 'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ'],
   },
+  presets: {
+    type: 'any',
+    default: null,
+    nullable: true,
+  }
 };

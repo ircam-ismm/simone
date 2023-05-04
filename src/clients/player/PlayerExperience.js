@@ -34,9 +34,6 @@ class PlayerExperience extends AbstractExperience {
 
     this.global = await this.client.stateManager.attach('global');
     this.checkinId = this.checkin.get('index');
-    const logFilename = `${this.client.id}-log-file.txt`;
-    this.startingTime = Date.now();
-    this.writer = await this.logger.create(logFilename);
     
 
     this.stateMachine = new StateMachine(this);
@@ -132,15 +129,11 @@ class PlayerExperience extends AbstractExperience {
       state: this.global.get('system'),
     });
 
-    const now = new Date().toString()
-    this.writer.write(`${now} - player name : ${name} - checkin id : ${this.checkinId} - system : ${this.global.get('system')}`);
-
     window.addEventListener('resize', () => this.render());
     this.render();
   }
 
   async exit() {
-    this.writer.close();
   } 
 
   async loadSoundbank() {

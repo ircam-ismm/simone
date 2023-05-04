@@ -63,8 +63,6 @@ export default class DrumMachine extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     //
@@ -101,8 +99,6 @@ export default class DrumMachine extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer worker
@@ -257,12 +253,10 @@ export default class DrumMachine extends State {
           this.analyzerEngine.start();
           this.synthEngine.start();
         }, nextStartTimeLocal);
-        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
         this.synthEngine.stop();
-        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }
   }
@@ -276,7 +270,6 @@ export default class DrumMachine extends State {
         this.nFramesBeat *= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
-        this.context.writer.write(`Set selection longer. N frames per loop : ${this.nFramesBeat}`);
       }
     } else {
       // New looping section must not last less than a frame long
@@ -284,7 +277,6 @@ export default class DrumMachine extends State {
         this.nFramesBeat /= 2;
         this.selectionLength = this.nFramesBeat * this.frameSize / this.sampleRate;
         this.targetDisplay.setSelectionLength(this.selectionLength);
-        this.context.writer.write(`Set selection shorter. N frames per loop : ${this.nFramesBeat}`);
       }
 
     }
@@ -421,8 +413,6 @@ export default class DrumMachine extends State {
               @input="${e => {
                 this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
                 this.context.participant.set({ sourceFilename: e.detail.value.name });
-                const now = Date.now();
-                this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
               }}"
             ></sc-file-tree>
             ${this.sourceDisplay.render()}
@@ -550,8 +540,6 @@ export default class DrumMachine extends State {
                         this.previousValues.detune = this.currentValues.detune;
                         this.currentValues.detune = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -585,8 +573,6 @@ export default class DrumMachine extends State {
                         this.previousValues.grainPeriod = this.currentValues.grainPeriod;
                         this.currentValues.grainPeriod = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -617,8 +603,6 @@ export default class DrumMachine extends State {
                         this.previousValues.grainDuration = this.currentValues.grainDuration;
                         this.currentValues.grainDuration = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button

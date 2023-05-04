@@ -12,6 +12,13 @@ import State from './State.js';
 import { html } from 'lit/html.js';
 import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
+const paramLabels = {
+  volume: 'volume',
+  detune: 'detune',
+  grainPeriod: 'period',
+  grainDuration: 'duration',
+};
+
 export default class SolarSystemOmegaSolo extends State {
   constructor(name, context) {
     super(name, context);
@@ -40,8 +47,20 @@ export default class SolarSystemOmegaSolo extends State {
     this.recording = false;
     this.recTime = 0;
 
+    this.panelType = 'satellite';
+    this.renderSatellites = this.renderSatellites.bind(this);
+    this.renderParameters = this.renderParameters.bind(this);
+    this.panelRenders = {
+      'satellite': this.renderSatellites,
+      'parameters': this.renderParameters,
+    }
+
+    this.presetMode = 'save';
+    this.nPresets = 16;
+    this.presets = {};
 
     this.targetPlayerState = this.context.participant;
+    
   }
 
   async enter() {
@@ -56,8 +75,6 @@ export default class SolarSystemOmegaSolo extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     // Waveform display
@@ -73,8 +90,6 @@ export default class SolarSystemOmegaSolo extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer worker
@@ -148,6 +163,11 @@ export default class SolarSystemOmegaSolo extends State {
           break;
       }
     });
+
+    // presets 
+    this.presets = this.context.global.get('presets');
+
+    this.context.render();
   }
 
 
@@ -183,6 +203,232 @@ export default class SolarSystemOmegaSolo extends State {
         this.recorderPlayerNode.stop();
         break;
     }
+  }
+
+
+  savePreset(i) {
+    const newPreset = {};
+    Object.entries(this.players).forEach(([name, state]) => {
+      if (state) {
+        const values = state.getValues();
+        const params = {
+          volume: values.volume,
+          detune: values.detune,
+          grainPeriod: values.grainPeriod,
+          grainDuration: values.grainDuration,
+        };
+        newPreset[name] = params;
+      }
+    });
+    this.presets[i] = newPreset;
+    this.context.global.set({presets: this.presets});
+  }
+
+  loadPreset(i) {
+    const preset = this.presets[i];
+    if (preset) {
+      Object.entries(this.players).forEach(([name, state]) => {
+        if (state && name in preset) {
+          const playerValues = preset[name];
+          state.set(playerValues);
+        }
+      });
+    }
+  }
+
+
+  renderParameters() {
+    const nPlayers = Object.keys(this.players).length;
+
+    return html`
+      <div style="
+          margin-top: 20px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(0px, ${nPlayers * 80 + 50}px));
+          grid-gap: 38px;
+          justify-content: space-between;
+        "
+      >
+      ${
+        ['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+          return html`
+            <div style="width: ${nPlayers * 50}px">
+              <h3>${paramLabels[param]}</h3>
+              <div
+                style="
+                  display: flex;
+                "
+              >
+                ${Object.entries(this.players).map(([name, state]) => {
+                  if (state) {
+                    const schema = state.getSchema();
+                    return html`
+                      <div
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          align-items: center;
+                          margin-right: 30px;
+                        "
+                      >
+                        <p>${name}</p>
+                        <sc-slider
+                          min="${schema[param].min}"
+                          max="${schema[param].max}"
+                          value="${state.get(param)}"
+                          width="40"
+                          height="200"
+                          orientation="vertical"
+                          @input="${e => {
+                            const update = {};
+                            update[param] = e.detail.value;
+                            state.set(update);
+                          }}"
+                        ></sc-slider>
+                      </div>
+                    `
+                  }
+                })}
+              </div>
+            </div>
+          `
+        })
+      }
+    `
+  } 
+
+  renderSatellites() {
+    return html`
+      <!-- Clients -->
+      <div style="
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(370px, 370px));
+        grid-gap: 38px;
+      "
+      >
+        ${Object.entries(this.players).map(([name, state]) => {
+          if (state) {
+            return html`
+              <div style="
+                position: relative;
+                padding: 5px 2px;
+                width: 370px;
+                background-color: #1c1c1c;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
+              "
+              >
+                <h1>${name}</h1>
+                <div style="
+                  position:absolute;
+                  top: 10px;
+                  right: 10px;
+                "
+                >
+                  <sc-button
+                    width="70"
+                    text="reboot"
+                    @input="${e => {
+                      state.set({ reboot: true });
+                    }}"
+                  ></sc-button>
+                </div>
+                <div style="
+                  display: flex;
+                  width: inherit;
+                  justify-content: space-evenly;
+                  align-items: center;
+                ">
+                  <sc-transport
+                    buttons="[play, stop]"
+                    width="50"
+                    @change="${e => state.set({ mosaicingActive: e.detail.value === 'play' })}"
+                  ></sc-transport>
+                  <select 
+                    style="
+                      width: 200px;
+                      height: 30px
+                    "
+                    @change="${e => {
+                      if (e.target.value !== "") {
+                        state.set({ sourceFilename: e.target.value, sourceFileLoaded: false });
+                      }
+                    }}"  
+                  >
+                    <option value="">select a source file</option>
+                    ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
+                      if (state.get('sourceFilename') === filename) {
+                        return html`
+                                <option value="${filename}" selected>${filename}</option>
+                              `
+                      } else {
+                        return html`
+                                <option value="${filename}">${filename}</option>
+                              `
+                      }
+                    })}
+                  </select>
+
+                  <div id="readyCircle-player${name}" style="
+                    height: 10px;
+                    width: 10px;
+                    background: ${state.get('sourceFileLoaded') ? "green" : "red"};
+                    clip-path: circle(5px at center);
+                  ">
+                  </div>
+                </div>
+
+                ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+                  const schema = state.getSchema();
+                  return html`
+                    <div style="
+                      margin: 10px;
+                      display: flex;
+                      width: 350px;
+                      justify-content: space-between;
+                      align-items: center;
+                    ">
+                      ${paramLabels[param]}
+                      <sc-slider
+                        min="${schema[param].min}"
+                        max="${schema[param].max}"
+                        value="${state.get(param)}"
+                        width="300"
+                        display-number
+                        @input="${e => {
+                          const update = {};
+                          update[param] = e.detail.value;
+                          state.set(update);
+                        }}"
+                      ></sc-slider>
+                    </div>
+                  `
+                })}
+              </div>
+            `
+          } else {
+            return html`
+              <div style="
+                position: relative;
+                padding: 5px 2px;
+                width: 370px;
+                background-color: #1c1c1c;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
+              "
+              >
+                <h1>${name}</h1>
+              </div>
+            `
+          }
+        })}
+      </div>
+    `
   }
 
   render() {
@@ -321,194 +567,65 @@ export default class SolarSystemOmegaSolo extends State {
             </div>
           </div>
 
-          <h2>satellites</h2>
-          <!-- Clients -->
-          <div style="
-            margin-top: 20px;
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(370px, 370px));
-            grid-gap: 38px;
-          "
-          >
-            ${Object.entries(this.players).map(([name, state]) => { 
-              if (state) {
-                return html`
-                  <div style="
-                    position: relative;
-                    padding: 5px 2px;
-                    width: 370px;
-                    background-color: #1c1c1c;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: space-between;
-                  "
-                  >
-                    <h1>${name}</h1>
-                    <div style="
-                      position:absolute;
-                      top: 10px;
-                      right: 10px;
-                    "
-                    >
-                      <sc-button
-                        width="70"
-                        text="reboot"
-                        @input="${e => {
-                          state.set({reboot: true});
-                        }}"
-                      ></sc-button>
-                    </div>
-                    <div style="
-                      display: flex;
-                      width: inherit;
-                      justify-content: space-evenly;
-                      align-items: center;
-                    ">
-                      <sc-transport
-                        buttons="[play, stop]"
-                        width="50"
-                        @change="${e => {
-                          if (e.detail.value === 'play') {
-                            state.set({ mosaicingActive: true });
-                            const now = Date.now();
-                            this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
-                          } else {
-                            state.set({ mosaicingActive: false });
-                            const now = Date.now();
-                            this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
-                          }
-                        }}"
-                      ></sc-transport>
-                      <select 
-                        style="
-                          width: 200px;
-                          height: 30px
-                        "
-                        @change="${e => {
-                          if (e.target.value !== "") {
-                            state.set({ sourceFilename: e.target.value, sourceFileLoaded: false});
-                            const now = Date.now();
-                            this.context.writer.write(`${now - this.context.startingTime}ms - set source player ${name} : ${e.target.value}`);
-                          }
-                        }}"  
-                      >
-                        <option value="">select a source file</option>
-                        ${Object.keys(this.context.audioBufferLoader.data).map(filename => {
-                          if (state.get('sourceFilename') === filename) {
-                            return html`
-                              <option value="${filename}" selected>${filename}</option>
-                            `
-                          } else {
-                            return html`
-                              <option value="${filename}">${filename}</option>
-                            `
-                          }
-                        })}
-                      </select>
-
-                      <div id="readyCircle-player${name}" style="
-                        height: 10px;
-                        width: 10px;
-                        background: ${state.get('sourceFileLoaded') ? "green" : "red"};
-                        clip-path: circle(5px at center);
-                      ">
-                      </div>
-                    </div>
-
-                    <div style="
-                      margin: 10px;
-                      display: flex;
-                      width: 350px;
-                      justify-content: space-between;
-                      align-items: center;
-                    ">
-                      volume
-                      <sc-slider
-                        min="-70"
-                        max="0"
-                        value="${state.get('volume')}"
-                        width="300"
-                        display-number
-                        @input="${e => state.set({ volume: e.detail.value})}"
-                      ></sc-slider>
-                    </div>
-                    <div style="
-                      margin: 10px;
-                      display: flex;
-                      width: 350px;
-                      justify-content: space-between;
-                      align-items: center;
-                    ">
-                      detune
-                      <sc-slider
-                        min="-24"
-                        max="24"
-                        value="${state.get('detune')}"
-                        width="300"
-                        display-number
-                        @input="${e => state.set({ detune: e.detail.value })}"
-                      ></sc-slider>
-                    </div>
-                    <div style="
-                      margin: 10px;
-                      display: flex;
-                      width: 350px;
-                      justify-content: space-between;
-                      align-items: center;
-                    ">
-                      period
-                      <sc-slider
-                        min="0.01"
-                        max="0.1"
-                        value="${state.get('grainPeriod')}"
-                        width="300"
-                        display-number
-                        @input="${e => state.set({ grainPeriod: e.detail.value })}"
-                      ></sc-slider>
-                    </div>
-                    <div style="
-                      margin: 10px;
-                      display: flex;
-                      width: 350px;
-                      justify-content: space-between;
-                      align-items: center;
-                    ">
-                      duration
-                      <sc-slider
-                        min="0.02"
-                        max="0.5"
-                        value="${state.get('grainDuration')}"
-                        width="300"
-                        display-number
-                        @input="${e => state.set({ grainDuration: e.detail.value })}"
-                      ></sc-slider>
-                    </div>
-                  </div>
-                `  
-              } else {
-                return html`
-                  <div style="
-                    position: relative;
-                    padding: 5px 2px;
-                    width: 370px;
-                    background-color: #1c1c1c;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: space-between;
-                  "
-                  >
-                    <h1>${name}</h1>
-                  </div>
-                `
-              }
+          <div style="margin-top: 20px">
+            <h2>panel type</h2>
+            ${Object.keys(this.panelRenders).map(panelType => {
+              return html`
+                <sc-button
+                  text="${panelType}"
+                  .selected="${panelType === this.panelType}"
+                  @input="${e => {
+                    this.panelType = panelType;
+                    this.context.render();
+                  }}"
+                ></sc-button>
+              `
             })}
+            
           </div>
+          
+          ${this.panelRenders[this.panelType]()}
 
         </div>
-      
       </div>
+
+      <!-- Presets -->
+      <div style="margin: 20px 50px">
+        <h2>presets</h2>
+        <sc-button
+          text="save"
+          width="70"
+          .selected="${this.presetMode === 'save'}"
+          @input="${e => {
+            this.presetMode = 'save';
+            this.context.render();
+          }}"
+        ></sc-button>
+        <sc-button
+          text="load"
+          width="70"
+          .selected="${this.presetMode === 'load'}"
+          @input="${e => {
+            this.presetMode = 'load';
+            this.context.render();
+          }}"
+        ></sc-button>
+        ${Array(this.nPresets).fill().map((_, i) => {
+          return html`
+            <sc-button
+              text="${i+1}"
+              width="40"
+              .selected="${i+1 in this.presets}"
+              @input="${e => {
+                this.presetMode === 'save' ? this.savePreset(i+1) : this.loadPreset(i+1);
+                this.context.render();
+              }}"
+            ></sc-button>
+          `
+        })}
+
+      </div>
+      
     `
   }
 

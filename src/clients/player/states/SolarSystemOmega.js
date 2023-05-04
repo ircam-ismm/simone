@@ -55,8 +55,6 @@ export default class SolarSystemOmega extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     //
@@ -80,8 +78,6 @@ export default class SolarSystemOmega extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer worker
@@ -309,16 +305,7 @@ export default class SolarSystemOmega extends State {
                   <sc-transport
                     buttons="[play, stop]"
                     width="50"
-                    @change="${e => {
-                      if (e.detail.value === 'play') {
-                        state.set({ mosaicingActive: true });
-                        const now = Date.now();
-                        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing player ${name}`);
-                      } else {
-                        state.set({ mosaicingActive: false });
-                        const now = Date.now();
-                        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing player ${name}`);
-                      }
+                    @change="${e => state.set({ mosaicingActive: e.detail.value === 'play'})}"
                     }}"
                   ></sc-transport>
                 </div>

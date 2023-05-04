@@ -58,8 +58,6 @@ export default class Solo extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     //
@@ -96,8 +94,6 @@ export default class Solo extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer worker
@@ -240,17 +236,14 @@ export default class Solo extends State {
   }
 
   transportMosaicing(state) {
-    const now = Date.now();
     switch (state) {
       case 'play':
         this.analyzerEngine.start();
         this.synthEngine.start();
-        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
         this.synthEngine.stop();
-        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }
   }
@@ -387,8 +380,6 @@ export default class Solo extends State {
               @input="${e => {
                 this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
                 this.context.participant.set({ sourceFilename: e.detail.value.name });
-                const now = Date.now();
-                this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
               }}"
             ></sc-file-tree>
             ${this.sourceDisplay.render()}
@@ -494,8 +485,6 @@ export default class Solo extends State {
                         this.previousValues.detune = this.currentValues.detune;
                         this.currentValues.detune = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -529,8 +518,6 @@ export default class Solo extends State {
                         this.previousValues.grainPeriod = this.currentValues.grainPeriod;
                         this.currentValues.grainPeriod = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -561,8 +548,6 @@ export default class Solo extends State {
                         this.previousValues.grainDuration = this.currentValues.grainDuration;
                         this.currentValues.grainDuration = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -583,279 +568,4 @@ export default class Solo extends State {
   }
 
 
-/*
-  render() {
-    return html`
-        <div style="padding: 20px">
-          <h1 style="margin: 20px 0">${this.context.participant.get('name')} [id: ${this.context.checkinId}]</h1>
-        </div>
-
-        <div style="padding-left: 20px; padding-right: 20px">
-          
-          <div style="display: flex">
-            <div>
-              <h3>recorder </h3>
-
-              <div style="position: relative">
-                ${this.recorderDisplay.render()}
-                <sc-record
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 10px;
-                  "
-                  @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
-                ></sc-record>
-                <sc-transport
-                  id="transport-recorder"
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 45px;
-                  "
-                  buttons="[play, stop]"
-                  @change="${e => this.transportRecordFile(e.detail.value)}"
-                ></sc-transport>
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 110px;
-                  "
-                  height="29";
-                  width="140";
-                  text="send to target"
-                  @input="${e => {
-                    this.setTargetFile(this.recordedBuffer);
-                    const now = Date.now();
-                    this.context.writer.write(`${now - this.context.startingTime}ms - set new target sound`);
-                  }}"
-                ></sc-button>
-              </div>
-
-
-              <h3>target</h3>
-
-              <div style="position: relative">
-                ${this.targetDisplay.render()}
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 10px;
-                  "
-                  width="40";
-                  text="*2"
-                  @input="${e => this.changeSelectionLength("longer")}"
-                ></sc-button>
-                <sc-button
-                  style="
-                    position: absolute;
-                    bottom: 10px;
-                    left: 55px;
-                  "
-                  width="40";
-                  text="/2"
-                  @input="${e => this.changeSelectionLength("smaller")}"
-                ></sc-button>
-              </div>
-
-              
-            </div>
-            <div style="margin-left: 20px">
-              <h3>Message from experimenter</h3>
-              <p id="messageBox"></p>
-            </div>
-          </div>
-
-          <div style="margin: 20px; padding: 20px; position: relative">
-
-            <div>
-              <h3>start mosaicing</h3>
-              <sc-transport
-                style="display: block"
-                id="transport-mosaicing"
-                buttons="[play, stop]"
-                width="50"
-                @change="${e => this.transportMosaicing(e.detail.value)}"
-              ></sc-transport>
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 150px;
-              "
-            >
-              <h3>volume (dB)</h3>
-              <sc-slider
-                id="slider-volume"
-                min="-60"
-                max="0"
-                value="${this.context.participant.get('volume')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.volume = decibelToLinear(e.detail.value);
-                  this.context.participant.set({volume: e.detail.value});
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.volume) {
-                    this.previousValues.volume = this.currentValues.volume;
-                    this.currentValues.volume = e.detail.value;
-                  }
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('volume')}"
-              >
-              </sc-button>
-
-              <h3>detune</h3>
-              <sc-slider
-                id="slider-detune"
-                min="-24"
-                max="24"
-                value="${this.context.participant.get('detune')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.detune = e.detail.value * 100;
-                  this.context.participant.set({ detune: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.detune) {
-                    this.previousValues.detune = this.currentValues.detune;
-                    this.currentValues.detune = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('detune')}"
-              >
-              </sc-button>
-
-            </div>
-
-            <div
-              style="
-                position: absolute;
-                top: 0;
-                left: 570px;
-              "
-            >
-
-              <h3>grain period</h3>
-              <sc-slider
-                id="slider-grainPeriod"
-                min="0.01"
-                max="0.1"
-                value="${this.context.participant.get('grainPeriod')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.analyzerEngine.setPeriod(e.detail.value);
-                  this.synthEngine.setGrainPeriod(e.detail.value);
-                  this.context.participant.set({ grainPeriod: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainPeriod) {
-                    this.previousValues.grainPeriod = this.currentValues.grainPeriod;
-                    this.currentValues.grainPeriod = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainPeriod')}"
-              >
-              </sc-button>
-
-              <h3>grain duration</h3>
-              <sc-slider
-                id="slider-grainDuration"
-                min="0.02"
-                max="0.5"
-                value="${this.context.participant.get('grainDuration')}"
-                width="300"
-                display-number
-                @input="${e => {
-                  this.synthEngine.setGrainDuration(e.detail.value);
-                  this.context.participant.set({ grainDuration: e.detail.value });
-                }}"
-                @change="${e => {
-                  if (e.detail.value !== this.currentValues.grainDuration) {
-                    this.previousValues.grainDuration = this.currentValues.grainDuration;
-                    this.currentValues.grainDuration = e.detail.value;
-                  }
-                  const now = Date.now();
-                  this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
-                }}"
-              ></sc-slider>
-              
-              <sc-button
-                width="90"
-                text="prev value"
-                @input="${e => this.switchValueSlider('grainDuration')}"
-              >
-              </sc-button>
-            </div>
-          </div>
-
-          <h3>Source</h3>
-
-          <sc-file-tree
-            value="${JSON.stringify(this.context.soundbankTreeRender)}";
-            @input="${e => {
-              this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
-              this.context.participant.set({ sourceFilename: e.detail.value.name });
-              const now = Date.now();
-              this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
-            }}"
-          ></sc-file-tree>
-
-          <div style="
-            display: inline;
-            margin: 20px;
-            position: relative;"
-          >
-            ${this.sourceDisplay.render()}
-            <p
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 0;
-              " 
-            >
-              preview :
-            </p>
-            <sc-transport
-              id="transport-source"
-              style="
-                position: absolute;
-                bottom: 0;
-                left: 70px;
-              "
-              buttons="[play, stop]"
-              @change="${e => this.transportSourceFile(e.detail.value)}"
-            ></sc-transport>
-          </div>
-        </div>
-
-      `
-  }
-  */
 }

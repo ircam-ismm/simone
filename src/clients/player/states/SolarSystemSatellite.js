@@ -266,8 +266,6 @@ export default class SolarSystemSatellite extends State {
               @input="${e => {
                 this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
                 this.context.participant.set({ sourceFilename: e.detail.value.name });
-                const now = Date.now();
-                this.context.writer.write(`${now - this.context.startingTime}ms - set source file : ${e.detail.value.name}`);
               }}"
             ></sc-file-tree>
             ${this.sourceDisplay.render()}
@@ -356,8 +354,6 @@ export default class SolarSystemSatellite extends State {
                       this.previousValues.detune = this.currentValues.detune;
                       this.currentValues.detune = e.detail.value;
                     }
-                    const now = Date.now();
-                    this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
                   }}"
                 ></sc-slider>
                 <sc-button
@@ -391,8 +387,6 @@ export default class SolarSystemSatellite extends State {
                       this.previousValues.grainPeriod = this.currentValues.grainPeriod;
                       this.currentValues.grainPeriod = e.detail.value;
                     }
-                    const now = Date.now();
-                    this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
                   }}"
                 ></sc-slider>
                 <sc-button
@@ -423,8 +417,6 @@ export default class SolarSystemSatellite extends State {
                       this.previousValues.grainDuration = this.currentValues.grainDuration;
                       this.currentValues.grainDuration = e.detail.value;
                     }
-                    const now = Date.now();
-                    this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                   }}"
                 ></sc-slider>
                 <sc-button

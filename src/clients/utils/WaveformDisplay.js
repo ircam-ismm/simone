@@ -283,6 +283,7 @@ export default class WaveformDisplay {
   //            Selection event listeners
   //
   /////////////////////////////////////////////////////////
+  //Clicking+holding on the selection will move the selection
   mouseDown(e) {
     this.clickTargetDim = e.currentTarget.getBoundingClientRect();
     this.mouseDownX = e.clientX;
@@ -294,7 +295,7 @@ export default class WaveformDisplay {
 
   mouseMove(e) {
     e.preventDefault(); // Prevent selection
-    if (!this.clickedSelection && this.freeSelection) {
+    if ((!this.clickedSelection || this.selectionWidth === this.width) && this.freeSelection) {
       const mouseMoveXRel = Math.max(0, Math.min(e.clientX - this.clickTargetDim.left, this.width));
       this.selectionStartPos = Math.min(this.mouseDownXRel, mouseMoveXRel);
       this.selectionEndPos = Math.max(this.mouseDownXRel, mouseMoveXRel);
@@ -322,6 +323,8 @@ export default class WaveformDisplay {
     window.removeEventListener('mouseup', this.mouseUp);
   }
 
+
+  //Clicking+holding on the selection will create a new selection at this point
   /*
   mouseDown(e) {
     this.clickTargetDim = e.currentTarget.getBoundingClientRect();
@@ -364,7 +367,76 @@ export default class WaveformDisplay {
   }
   */
 
+  touchStartTarget(e) {
+    e.preventDefault();
 
+    if (this.pointerIds.length === 0) {
+      window.addEventListener('touchmove', this.touchMoveTarget, { passive: false });
+      window.addEventListener('touchend', this.touchEndTarget);
+      window.addEventListener('touchcancel', this.touchEndTarget);
+    }
+
+    for (let touch of e.changedTouches) {
+      this.touchTargetDim = e.currentTarget.getBoundingClientRect();
+      this.touchDownX = touch.clientX;
+      this.touchDownXRel = this.touchDownX - this.touchTargetDim.left;
+      this.touchedSelection = (this.touchDownXRel < this.selectionEndPos) && (this.touchDownXRel > this.selectionStartPos);
+      const id = touch.identifier;
+      this.pointerIds.push(id);
+      this.activePointers.set(id, touch);
+    }
+  }
+
+  touchMoveTarget(e) {
+    e.preventDefault();
+
+    for (let touch of e.changedTouches) {
+      const id = touch.identifier;
+      if (this.pointerIds.indexOf(id) !== -1) {
+        if ((!this.touchedSelection || this.selectionWidth === this.width) && this.freeSelection) {
+          const touchMoveXRel = Math.max(0, Math.min(touch.clientX - this.touchTargetDim.left, this.width));
+          this.selectionStartPos = Math.min(this.touchDownXRel, touchMoveXRel);
+          this.selectionEndPos = Math.max(this.touchDownXRel, touchMoveXRel);
+          this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+          this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+          this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
+        } else if (this.touchedSelection) {
+          const touchMov = touch.clientX - this.touchDownX;
+          this.selectionStartPos = this.selectionOffset + touchMov;
+          this.selectionStartPos = Math.min(Math.max(0, this.selectionStartPos), this.width - this.selectionWidth);
+          this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
+          this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+        }
+
+        if (this.cbSelectionChange) {
+          const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+          const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+          this.cbSelectionChange(selectionStartTime, selectionEndTime);
+        }
+      }
+    }
+  }
+
+  touchEndTarget(e) {
+    for (let touch of e.changedTouches) {
+      const pointerId = touch.identifier;
+      const index = this.pointerIds.indexOf(pointerId);
+      if (index !== -1) {
+        this.pointerIds.splice(index, 1);
+        this.activePointers.delete(pointerId);
+      }
+    }
+
+    if (this.pointerIds.length === 0) {
+      this.selectionOffset = this.selectionStartPos;
+      
+      window.removeEventListener('touchmove', this.touchMoveTarget);
+      window.removeEventListener('touchend', this.touchEndTarget);
+      window.removeEventListener('touchcancel', this.touchEndTarget);
+    }
+  }
+
+  /*
   touchStartTarget(e) {
     e.preventDefault();
 
@@ -433,6 +505,7 @@ export default class WaveformDisplay {
       window.removeEventListener('touchcancel', this.touchEndTarget);
     }
   }
+  */
 
 
   render() {

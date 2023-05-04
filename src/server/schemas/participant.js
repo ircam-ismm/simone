@@ -32,18 +32,26 @@ export default {
   volume: {
     type: 'float',
     default: 0,
+    min: -70,
+    max: 0,
   },
   detune: {
     type: 'float',
     default: 0,
+    min: -24,
+    max: 24,
   },
   grainPeriod: {
     type: 'float',
     default: 0.1,
+    min: 0.01,
+    max: 0.1,
   },
   grainDuration: {
     type: 'float',
     default: 0.25,
+    min: 0.02,
+    max: 0.5
   },
   density: {
     type: 'float',

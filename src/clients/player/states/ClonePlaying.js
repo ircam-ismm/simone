@@ -58,8 +58,6 @@ export default class ClonePlaying extends State {
       const audioBuffer = await this.context.audioContext.decodeAudioData(this.context.fileReader.result);
       this.recordedBuffer = audioBuffer;
       this.recorderDisplay.setBuffer(audioBuffer);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - recorded new file`);
     });
 
     //
@@ -96,8 +94,6 @@ export default class ClonePlaying extends State {
       this.selectionStart = start;
       this.selectionEnd = end;
       this.analyzerEngine.setLoopLimits(start, end);
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - moved selection : ${start}s, ${end}s`);
     });
 
     // MFCC analyzer 
@@ -168,8 +164,6 @@ export default class ClonePlaying extends State {
           buffer: sourceBuffer.getChannelData(0),
         }
       });
-      const now = Date.now();
-      this.context.writer.write(`${now - this.context.startingTime}ms - set source file : recording-player-${idSourceToGet}.wav`);
     }
 
     // Previous values sliders
@@ -242,12 +236,10 @@ export default class ClonePlaying extends State {
       case 'play':
         this.analyzerEngine.start();
         this.synthEngine.start();
-        this.context.writer.write(`${now - this.context.startingTime}ms - started mosaicing`);
         break;
       case 'stop':
         this.analyzerEngine.stop();
         this.synthEngine.stop();
-        this.context.writer.write(`${now - this.context.startingTime}ms - stopped mosaicing`);
         break;
     }
   }
@@ -461,8 +453,6 @@ export default class ClonePlaying extends State {
                         this.previousValues.detune = this.currentValues.detune;
                         this.currentValues.detune = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set detune : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -496,8 +486,6 @@ export default class ClonePlaying extends State {
                         this.previousValues.grainPeriod = this.currentValues.grainPeriod;
                         this.currentValues.grainPeriod = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain period : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button
@@ -528,8 +516,6 @@ export default class ClonePlaying extends State {
                         this.previousValues.grainDuration = this.currentValues.grainDuration;
                         this.currentValues.grainDuration = e.detail.value;
                       }
-                      const now = Date.now();
-                      this.context.writer.write(`${now - this.context.startingTime}ms - set grain duration : ${e.detail.value}`);
                     }}"
                   ></sc-slider>
                   <sc-button

@@ -50,8 +50,6 @@ class StateMachine {
     const ctor = states[name];
     const state = new ctor(name, this.context);
 
-    const now = Date.now();
-    this.context.writer.write(`${now - this.context.startingTime}ms - > enter ${name}`);
     console.log(`> enter ${name}`);
     await state.enter();
     state.status = 'entered';

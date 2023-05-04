@@ -79,6 +79,7 @@ class ThingExperience extends AbstractExperience {
     const availableNames = this.global.get('availableNames');
     const name = availableNames.shift();
     this.global.set({ availableNames: availableNames });
+    console.log('name: ', name);
 
     this.participant = await this.client.stateManager.create('participant', {
       name: name
