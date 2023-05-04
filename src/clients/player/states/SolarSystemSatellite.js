@@ -136,18 +136,6 @@ export default class SolarSystemSatellite extends State {
                 // console.log('receiving', updates.mosaicingSynth)
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
-              if ('volume' in updates) {
-                this.context.participant.set({ volume: updates.volume });
-              }
-              if ('detune' in updates) {
-                this.context.participant.set({detune: updates.detune});
-              }
-              if ('grainPeriod' in updates) {
-                this.context.participant.set({ grainPeriod: updates.grainPeriod });
-              }
-              if ('grainDuration' in updates) {
-                this.context.participant.set({ grainDuration: updates.grainDuration });
-              }
             });
           }
           break;

@@ -44,9 +44,11 @@ export default class SolarSystemOmegaSolo extends State {
       mfccMaxFreq: this.mfccMaxFreq,
     };
 
+
     this.recording = false;
     this.recTime = 0;
 
+    // panel displays
     this.panelType = 'satellite';
     this.renderSatellites = this.renderSatellites.bind(this);
     this.renderParameters = this.renderParameters.bind(this);
@@ -55,9 +57,13 @@ export default class SolarSystemOmegaSolo extends State {
       'parameters': this.renderParameters,
     }
 
+    // presets
     this.presetMode = 'save';
     this.nPresets = 16;
     this.presets = {};
+
+    // selected participants for global/group control
+    this.groupControlStates = {};
 
     this.targetPlayerState = this.context.participant;
     
@@ -151,6 +157,7 @@ export default class SolarSystemOmegaSolo extends State {
           if (playerName !== 'Ω' && playerName !== 'Ω*' ) {
             playerState.onDetach(() => {
               this.players[playerName] = null;
+              delete this.groupControlStates[playerName];
               this.context.render();
             });
             playerState.subscribe(updates => {
@@ -158,6 +165,7 @@ export default class SolarSystemOmegaSolo extends State {
             });
 
             this.players[playerName] = playerState;
+            this.groupControlStates[playerName] = playerState;
             this.context.render();
           }
           break;
@@ -203,6 +211,14 @@ export default class SolarSystemOmegaSolo extends State {
         this.recorderPlayerNode.stop();
         break;
     }
+  }
+
+  setGroupParam(param, value) {
+    Object.values(this.groupControlStates).forEach(state => {
+      const update = {}
+      update[param] = value;
+      state.set(update);
+    });
   }
 
 
@@ -520,52 +536,65 @@ export default class SolarSystemOmegaSolo extends State {
             ${this.targetDisplay.render()}
           </div>
 
-          <h2>global controls</h2>
+          <h2>group controls</h2>
           <div style="
             display: flex;
             justify-content: space-between;
           ">
-            <div>
-              <h3>volume</h3>
-              <sc-slider
-                min="-70"
-                max="0"
-                display-number
-                width="${(this.waveformWidthLarge-60)/4}"
-                @input="${e => this.context.participant.set({volume: e.detail.value})}"
-              ></sc-slider>
-            </div>
-            <div>
-              <h3>detune</h3>
-              <sc-slider
-                min="-24"
-                max="24"
-                display-number
-                width="${(this.waveformWidthLarge - 60) / 4}"
-                @input="${e => this.context.participant.set({ detune: e.detail.value })}"
-              ></sc-slider>
-            </div>
-            <div>
-              <h3>period</h3>
-              <sc-slider
-                min="0.01"
-                max="0.1"
-                display-number
-                width="${(this.waveformWidthLarge - 60) / 4}"
-                @input="${e => this.context.participant.set({ grainPeriod: e.detail.value })}"
-              ></sc-slider>
-            </div>
-            <div>
-              <h3>duration</h3>
-              <sc-slider
-                min="0.02"
-                max="0.5"
-                display-number
-                width="${(this.waveformWidthLarge - 60) / 4}"
-                @input="${e => this.context.participant.set({ grainDuration: e.detail.value })}"
-              ></sc-slider>
-            </div>
+            ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+              const schema = this.context.participant.getSchema();
+              return html`
+                <div>
+                  <h3>${param}</h3>
+                  <sc-slider
+                    min="${schema[param].min}"
+                    max="${schema[param].max}"
+                    display-number
+                    width="${(this.waveformWidthLarge-60)/4}"
+                    @input="${e => this.setGroupParam(param, e.detail.value)}"
+                  ></sc-slider>
+                </div>
+              `
+            })}
           </div>
+
+          <div style="margin-top: 10px">
+              <sc-button
+                text="all"
+                width="70"
+                @input="${e => {
+                  this.groupControlStates = {...this.players};
+                  this.context.render();
+                }}"
+              ></sc-button>
+              <sc-button
+                text="none"
+                width="70"
+                @input="${e => {
+                  this.groupControlStates = {};
+                  this.context.render();
+                }}"
+              ></sc-button>
+              ${Object.entries(this.players).map(([name, state]) => {
+                if (state) {
+                  return html`
+                    <sc-button
+                      text="${name}"
+                      width="40"
+                      .selected="${name in this.groupControlStates}"
+                      @input="${e => {
+                        if (name in this.groupControlStates) {
+                          delete this.groupControlStates[name];
+                        } else {
+                          this.groupControlStates[name] = state;
+                        }
+                        this.context.render();
+                      }}"
+                    ></sc-button>
+                  `
+                }
+              })}
+            </div>
 
           <div style="margin-top: 20px">
             <h2>panel type</h2>

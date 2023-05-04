@@ -177,18 +177,6 @@ class ThingExperience extends AbstractExperience {
                 // console.log('receiving', updates.mosaicingSynth)
                 this.synthEngine.postData(Object.values(updates.mosaicingData));
               }
-              if ('volume' in updates) {
-                this.participant.set({ volume: updates.volume });
-              }
-              if ('detune' in updates) {
-                this.participant.set({detune: updates.detune});
-              }
-              if ('grainPeriod' in updates) {
-                this.participant.set({ grainPeriod: updates.grainPeriod });
-              }
-              if ('grainDuration' in updates) {
-                this.participant.set({ grainDuration: updates.grainDuration });
-              }
             });
           }
           break;
