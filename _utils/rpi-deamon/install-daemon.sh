@@ -5,7 +5,7 @@ dir="$(dirname "$0")"
 
 cd $dir
 
-service="distributed-mosaicing-daemon.service"
+service="simone-daemon.service"
 
 echo "Registering \"$service\""
 

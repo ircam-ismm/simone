@@ -1,13 +1,13 @@
 [Unit]
-Description=Launch distributed-mosaicing application
+Description=Launch simone application
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=idle
 ExecStartPre=/bin/sh -c 'while ! ping -c1 10.10.0.1; do sleep 1; done'
-ExecStart=/usr/bin/node /home/pi/distributed-mosaicing/.build/clients/thing/index.js
-WorkingDirectory=/home/pi/distributed-mosaicing
+ExecStart=/usr/bin/node /home/pi/simone/.build/clients/thing/index.js
+WorkingDirectory=/home/pi/simone
 StandardOutput=inherit
 StandardError=inherit
 Restart=always

@@ -116,7 +116,7 @@ server.stateManager.registerSchema('global', globalSchema);
     global.subscribe(update => {
       if ("presets" in update) {
         const presets = update.presets;
-        const presetsJson = JSON.stringify(presets);
+        const presetsJson = JSON.stringify(presets, null, 2);
         fs.writeFile('presets/presets.json', presetsJson, 'utf8', (err) => {
           if (err) {
             console.log('could not write preset file', err);

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-service="distributed-mosaicing-daemon.service"
+service="simone-daemon.service"
 
 echo "Stop \"$service\""
 sudo systemctl stop "$service"

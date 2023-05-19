@@ -260,7 +260,7 @@ export default class SolarSystemOmegaSolo extends State {
       <div style="
           margin-top: 20px;
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(0px, ${nPlayers * 80 + 50}px));
+          grid-template-columns: repeat(auto-fit, minmax(0px, ${nPlayers * 50 + 50}px));
           grid-gap: 38px;
           justify-content: space-between;
         "
@@ -448,6 +448,13 @@ export default class SolarSystemOmegaSolo extends State {
   }
 
   render() {
+    let groupSliderWidth;
+    if (window.innerWidth < 1000) {
+      groupSliderWidth = this.waveformWidthLarge;
+    } else {
+      groupSliderWidth = (this.waveformWidthLarge - 60) / 4;
+    }
+
     return html`
       <!-- Name and message bar -->
       <div style="
@@ -540,6 +547,7 @@ export default class SolarSystemOmegaSolo extends State {
           <div style="
             display: flex;
             justify-content: space-between;
+            flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
           ">
             ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
               const schema = this.context.participant.getSchema();
@@ -550,7 +558,7 @@ export default class SolarSystemOmegaSolo extends State {
                     min="${schema[param].min}"
                     max="${schema[param].max}"
                     display-number
-                    width="${(this.waveformWidthLarge-60)/4}"
+                    width="${groupSliderWidth}"
                     @input="${e => this.setGroupParam(param, e.detail.value)}"
                   ></sc-slider>
                 </div>
@@ -619,7 +627,10 @@ export default class SolarSystemOmegaSolo extends State {
       </div>
 
       <!-- Presets -->
-      <div style="margin: 20px 50px">
+      <div style="
+        margin: 20px 50px;
+        padding-bottom: 20px;
+      ">
         <h2>presets</h2>
         <sc-button
           text="save"
