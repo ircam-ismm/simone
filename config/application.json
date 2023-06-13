@@ -13,6 +13,9 @@
     thing: {
       target: 'node',
     },
+    recorder: {
+      target: 'browser',
+    },
   },
 
   system: 'solar-system',

@@ -8,6 +8,7 @@ import compile from 'template-literal';
 import PlayerExperience from './PlayerExperience.js';
 import ControllerExperience from './ControllerExperience.js';
 import ThingExperience from './ThingExperience.js';
+import RecorderExperience from './RecorderExperience.js';
 
 import pluginPlatformFactory from '@soundworks/plugin-platform/server';
 import pluginSyncFactory from '@soundworks/plugin-sync/server';
@@ -162,12 +163,15 @@ server.stateManager.registerSchema('global', globalSchema);
     const playerExperience = new PlayerExperience(server, 'player');
     const controllerExperience = new ControllerExperience(server, 'controller');
     const thingExperience = new ThingExperience(server, 'thing');
+    const recorderExperience = new RecorderExperience(server, 'recorder');
+
 
     // start all the things
     await server.start();
     playerExperience.start();
     controllerExperience.start();
     thingExperience.start();
+    recorderExperience.start();
 
   } catch (err) {
     console.error(err.stack);

@@ -86,7 +86,6 @@ export default class CloneRecording extends State {
       await this.context.global.set({ clonePlayersReady: nPlayersReady + 1 });
       await this.context.participant.set({ state: 'clone-waiting' });
     }
-    
   }
 
   transportRecordedFile(state) {
