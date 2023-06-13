@@ -426,8 +426,8 @@ export default class DrumMachineContinuous extends State {
               <h3>detune</h3>
               <sc-slider
                 id="slider-detune"
-                min="-24"
-                max="24"
+                min="-12"
+                max="12"
                 value="${this.context.participant.get('detune')}"
                 width="300"
                 display-number

@@ -239,8 +239,8 @@ export default class NoMicrophone extends State {
 
               <h3>detune</h3>
               <sc-slider
-                min="-24"
-                max="24"
+                min="-12"
+                max="12"
                 width="300"
                 display-number
                 @input="${e => this.synthEngine.detune = e.detail.value * 100}"

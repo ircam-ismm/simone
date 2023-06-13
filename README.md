@@ -75,7 +75,7 @@ In this version of the interface, the loop section is constrained by a rythmic g
 Beneath the waveform are various sliders for controlling the sound synthesis. You can also click on the number boxes to input any desired value.
 
 - __volume__ : Changes volume, from -60 dB to 0 dB.
-- __detune__ : Changes the pitch of the sound on a linear scale from -24 (two octaves down) to +24 (two octave up).
+- __detune__ : Changes the pitch of the sound on a linear scale from -12 (one octaves down) to +12 (one octave up).
 - __grain period__ : Changes the time between which two grains of sound are played. Lower value will result in a more "dense" sound.
 - __grain duration__ : Changes the duration of each grain played.
 

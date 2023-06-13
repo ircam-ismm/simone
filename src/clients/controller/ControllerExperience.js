@@ -192,8 +192,8 @@ class ControllerExperience extends AbstractExperience {
                           left: 150px;
                         "
                         display-number
-                        min="-24"
-                        max="24"
+                        min="-12"
+                        max="12"
                         value=${state.get('detune')}
                       ></sc-slider>
                     </div>

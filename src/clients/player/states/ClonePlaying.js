@@ -439,8 +439,8 @@ export default class ClonePlaying extends State {
                 <div>
                   <sc-slider
                     id="slider-detune"
-                    min="-24"
-                    max="24"
+                    min="-12"
+                    max="12"
                     value="${this.context.participant.get('detune')}"
                     width="${sliderWidth}"
                     display-number

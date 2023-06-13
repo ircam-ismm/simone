@@ -338,8 +338,8 @@ export default class Simplified extends State {
               <h2>pitch</h2>
               <sc-slider
                 id="slider-detune"
-                min="-24"
-                max="24"
+                min="-12"
+                max="12"
                 value="${this.context.participant.get('detune')}"
                 width="240"
                 @input="${e => {
