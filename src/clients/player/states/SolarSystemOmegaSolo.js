@@ -161,6 +161,7 @@ export default class SolarSystemOmegaSolo extends State {
               this.context.render();
             });
             playerState.subscribe(updates => {
+              console.log('update', updates);
               this.context.render();
             });
 
@@ -314,6 +315,7 @@ export default class SolarSystemOmegaSolo extends State {
   } 
 
   renderSatellites() {
+    console.log('render staeefz')
     return html`
       <!-- Clients -->
       <div style="
@@ -361,6 +363,7 @@ export default class SolarSystemOmegaSolo extends State {
                   <sc-transport
                     buttons="[play, stop]"
                     width="50"
+                    state="${state.get('mosaicingActive') ? 'play' : 'stop'}"
                     @change="${e => state.set({ mosaicingActive: e.detail.value === 'play' })}"
                   ></sc-transport>
                   <select 
@@ -452,7 +455,7 @@ export default class SolarSystemOmegaSolo extends State {
     if (window.innerWidth < 1000) {
       groupSliderWidth = this.waveformWidthLarge;
     } else {
-      groupSliderWidth = (this.waveformWidthLarge - 60) / 4;
+      groupSliderWidth = (this.waveformWidthLarge - 200) / 4;
     }
 
     return html`
@@ -548,7 +551,13 @@ export default class SolarSystemOmegaSolo extends State {
             display: flex;
             justify-content: space-between;
             flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
+            align-items: ${window.innerWidth < 1000 ? 'flex-start' : 'flex-end'}
           ">
+            <sc-transport
+              buttons="[play, stop]"
+              height="50"
+              @change="${e => this.setGroupParam('mosaicingActive', e.detail.value === 'play')}"
+            ></sc-transport>
             ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
               const schema = this.context.participant.getSchema();
               return html`

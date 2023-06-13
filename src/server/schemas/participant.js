@@ -38,8 +38,8 @@ export default {
   detune: {
     type: 'float',
     default: 0,
-    min: -24,
-    max: 24,
+    min: -12,
+    max: 12,
   },
   grainPeriod: {
     type: 'float',
