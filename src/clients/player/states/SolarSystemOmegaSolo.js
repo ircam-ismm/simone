@@ -161,7 +161,6 @@ export default class SolarSystemOmegaSolo extends State {
               this.context.render();
             });
             playerState.subscribe(updates => {
-              console.log('update', updates);
               this.context.render();
             });
 
@@ -315,7 +314,6 @@ export default class SolarSystemOmegaSolo extends State {
   } 
 
   renderSatellites() {
-    console.log('render staeefz')
     return html`
       <!-- Clients -->
       <div style="

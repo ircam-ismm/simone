@@ -217,7 +217,7 @@ class RecorderExperience extends AbstractExperience {
 
           <p>you can select a section of the recording that you want to keep by clicking/touching and dragging on the waveform</p>
 
-          <h2>filename</h2>
+          <h2>filename (cmd/ctrl+s to confirm)</h2>
           <sc-text
             width="${this.waveformWidth}"
             height="${this.buttonHeight}"

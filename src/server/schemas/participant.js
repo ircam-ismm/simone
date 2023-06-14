@@ -45,7 +45,7 @@ export default {
     type: 'float',
     default: 0.1,
     min: 0.01,
-    max: 0.1,
+    max: 0.5,
   },
   grainDuration: {
     type: 'float',

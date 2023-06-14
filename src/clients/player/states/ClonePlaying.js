@@ -15,6 +15,13 @@ import State from './State.js';
 import { html } from 'lit/html.js';
 import mfccWorkerString from '../../utils/mfcc.worker.js?inline';
 
+const paramLabels = {
+  volume: 'volume',
+  detune: 'detune',
+  grainPeriod: 'grain period',
+  grainDuration: 'grain duration',
+};
+
 export default class ClonePlaying extends State {
   constructor(name, context) {
     super(name, context);
@@ -270,6 +277,57 @@ export default class ClonePlaying extends State {
     this.render();
   }
 
+  updateParamValue(param, value) {
+    switch (param) {
+      case 'volume':
+        this.synthEngine.volume = decibelToLinear(value);
+        this.context.participant.set({ volume: value });
+        break;
+      case 'detune':
+        this.synthEngine.detune = value * 100;
+        this.context.participant.set({ detune: value });
+        break;
+      case 'grainPeriod':
+        this.analyzerEngine.setPeriod(value);
+        this.synthEngine.setGrainPeriod(value);
+        this.context.participant.set({ grainPeriod: value });
+        break;
+      case 'grainDuration':
+        this.synthEngine.setGrainDuration(value);
+        this.context.participant.set({ grainDuration: value });
+        break;
+    }
+  }
+
+  updateParamPrevValue(param, value) {
+    switch (param) {
+      case 'volume':
+        if (value !== this.currentValues.volume) {
+          this.previousValues.volume = this.currentValues.volume;
+          this.currentValues.volume = value;
+        }
+        break;
+      case 'detune':
+        if (value !== this.currentValues.detune) {
+          this.previousValues.detune = this.currentValues.detune;
+          this.currentValues.detune = value;
+        }
+        break;
+      case 'grainPeriod':
+        if (value !== this.currentValues.grainPeriod) {
+          this.previousValues.grainPeriod = this.currentValues.grainPeriod;
+          this.currentValues.grainPeriod = value;
+        }
+        break;
+      case 'grainDuration':
+        if (value !== this.currentValues.grainDuration) {
+          this.previousValues.grainDuration = this.currentValues.grainDuration;
+          this.currentValues.grainDuration = value;
+        }
+        break;
+    }
+  }
+
   render() {
     let sliderWidth;
     if (window.innerWidth < 1000) {
@@ -277,6 +335,7 @@ export default class ClonePlaying extends State {
     } else {
       sliderWidth = (this.waveformWidthLarge - 30) / 2 - 160;
     }
+    const schema = this.context.participant.getSchema();
 
     return html`
       <!-- Name and message bar -->
@@ -397,135 +456,36 @@ export default class ClonePlaying extends State {
           <!-- Sliders -->
           <div style="
             margin-top: 20px;
-            display: flex;
+            display: grid;
+            grid-auto-flow: ${window.innerWidth < 1000 ? 'row' : 'column'};
+            grid-template-rows: ${window.innerWidth < 1000 ? 'repeat(1, 1fr)' : 'repeat(2, 1fr)'};
             justify-content: space-between;
-            flex-direction: ${window.innerWidth < 1000 ? 'column' : 'row'};
           "
           >
-            <div>
-              <!-- volume -->
-              <div>
-                <h3>volume (dB)</h3>
+            ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+              return html`
                 <div>
-                  <sc-slider
-                    id="slider-volume"
-                    min="-60"
-                    max="0"
-                    value="${this.context.participant.get('volume')}"
-                    width="${sliderWidth}"
-                    display-number
-                    @input="${e => {
-                      this.synthEngine.volume = decibelToLinear(e.detail.value);
-                      this.context.participant.set({volume: e.detail.value});
-                    }}"
-                    @change="${e => {
-                      if (e.detail.value !== this.currentValues.volume) {
-                        this.previousValues.volume = this.currentValues.volume;
-                        this.currentValues.volume = e.detail.value;
-                      }
-                    }}"
-                  ></sc-slider>
-                  <sc-button
-                    width="150"
-                    text="previous value"
-                    @input="${e => this.switchValueSlider('volume')}"
-                  >
+                  <h3>${paramLabels[param]}</h3>
+                  <div>
+                    <sc-slider
+                      id="slider-${param}"
+                      min="${schema[param].min}"
+                      max="${schema[param].max}"
+                      value="${this.context.participant.get(param)}"
+                      width="${sliderWidth}"
+                      display-number
+                      @input="${e => this.updateParamValue(param, e.detail.value)}"
+                      @change="${e => this.updateParamPrevValue(param, e.detail.value)}"
+                    ></sc-slider>
+                    <sc-button
+                      width="150"
+                      text="previous value"
+                      @input="${e => this.switchValueSlider(param)}"
+                    >
+                  </div>
                 </div>
-              </div>
-                 
-              <!-- detune -->
-              <div>
-                <h3>detune</h3>
-                <div>
-                  <sc-slider
-                    id="slider-detune"
-                    min="-12"
-                    max="12"
-                    value="${this.context.participant.get('detune')}"
-                    width="${sliderWidth}"
-                    display-number
-                    @input="${e => {
-                      this.synthEngine.detune = e.detail.value * 100;
-                      this.context.participant.set({ detune: e.detail.value });
-                    }}"
-                    @change="${e => {
-                      if (e.detail.value !== this.currentValues.detune) {
-                        this.previousValues.detune = this.currentValues.detune;
-                        this.currentValues.detune = e.detail.value;
-                      }
-                    }}"
-                  ></sc-slider>
-                  <sc-button
-                    width="150"
-                    text="previous value"
-                    @input="${e => this.switchValueSlider('detune')}"
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <!-- grain period -->
-              <div>
-                <h3>grain period</h3>
-                <div>
-                  <sc-slider
-                    id="slider-grainPeriod"
-                    min="0.01"
-                    max="0.3"
-                    value="${this.context.participant.get('grainPeriod')}"
-                    width="${sliderWidth}"
-                    display-number
-                    @input="${e => {
-                      this.analyzerEngine.setPeriod(e.detail.value);
-                      this.synthEngine.setGrainPeriod(e.detail.value);
-                      this.context.participant.set({ grainPeriod: e.detail.value });
-                    }}"
-                    @change="${e => {
-                      if (e.detail.value !== this.currentValues.grainPeriod) {
-                        this.previousValues.grainPeriod = this.currentValues.grainPeriod;
-                        this.currentValues.grainPeriod = e.detail.value;
-                      }
-                    }}"
-                  ></sc-slider>
-                  <sc-button
-                    width="150"
-                    text="previous value"
-                    @input="${e => this.switchValueSlider('grainPeriod')}"
-                  >
-                </div>
-              </div>
-
-              <!-- grain duration -->
-              <div>
-                <h3>grain duration</h3>
-                <div>
-                  <sc-slider
-                    id="slider-grainDuration"
-                    min="0.02"
-                    max="0.5"
-                    value="${this.context.participant.get('grainDuration')}"
-                    width="${sliderWidth}"
-                    display-number
-                    @input="${e => {
-                      this.synthEngine.setGrainDuration(e.detail.value);
-                      this.context.participant.set({ grainDuration: e.detail.value });
-                    }}"
-                    @change="${e => {
-                      if (e.detail.value !== this.currentValues.grainDuration) {
-                        this.previousValues.grainDuration = this.currentValues.grainDuration;
-                        this.currentValues.grainDuration = e.detail.value;
-                      }
-                    }}"
-                  ></sc-slider>
-                  <sc-button
-                    width="150"
-                    text="previous value"
-                    @input="${e => this.switchValueSlider('grainDuration')}"
-                  >
-                </div>
-              </div>
-            </div>
+              `
+            })}
           </div>
         </div>      
       </div>

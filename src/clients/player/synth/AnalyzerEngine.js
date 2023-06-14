@@ -71,7 +71,9 @@ class AnalyzerEngine {
     if (this.active && this.target) {
       const targetData = this.target.getChannelData(0);
       const idx = Math.floor(this.transportTime*this.sampleRate);
-      const grain = targetData.slice(idx, idx+this.frameSize);
+      const iMin = Math.max(0, idx-this.frameSize/2);
+      const iMax = idx + this.frameSize/2;
+      const grain = targetData.slice(iMin, iMax);
       // compute mfcc
       const grainMfcc = this.mfcc.get(grain);
       for (let j = 0; j < 12; j++) {
@@ -88,9 +90,7 @@ class AnalyzerEngine {
       } else {
         grainRms = (grainRms - this.minRms)/(this.maxRms - this.minRms);
       }
-      
       grainRms = Math.max(Math.min(grainRms, 1), 0);
-
 
       this.dataDestination.set({ mosaicingData: [grainMfcc, grainRms] });
 
