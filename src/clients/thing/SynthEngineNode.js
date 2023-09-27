@@ -11,6 +11,7 @@ class SynthEngineNode {
 
     this.playing = false;
 
+    this._randomizer = 1;
     this._detune = 0;
     this.output = new GainNode(this.audioContext);
     this.output.gain.value = 0.5;
@@ -45,6 +46,10 @@ class SynthEngineNode {
     this._detune = value;
   }
 
+  set randomizer(value) {
+    this._randomizer = Math.floor(value);
+  }
+
   setGrainDuration(grainDuration) {
     // grainDuration = grainDuration * this.sampleRate;
     // grainDuration = Math.pow(2,Math.round(Math.log2(grainDuration)));
@@ -77,7 +82,10 @@ class SynthEngineNode {
     // playing sound part
     // get closest grain index from kdTree
     if (this.currGrainMfcc && this.kdTree && this.playing) {
-      const target = this.kdTree.nn(this.currGrainMfcc);
+      // const target = this.kdTree.nn(this.currGrainMfcc);
+      const targets = this.kdTree.knn(this.currGrainMfcc, this._randomizer);
+      const randK = Math.floor(Math.random() * this._randomizer);
+      const target = targets[randK];
       const timeOffset = this.times[target];
 
       const rand = Math.random() * this.jitter;

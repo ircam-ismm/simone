@@ -2,8 +2,6 @@ import { AbstractExperience } from '@soundworks/core/client';
 import { render, html, nothing } from 'lit/html.js';
 import renderInitializationScreens from '@soundworks/template-helpers/client/render-initialization-screens.js';
 import StateMachine from './states/StateMachine.js';
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
 
 const hash = window.location.hash.replace(/^#/, '');
 

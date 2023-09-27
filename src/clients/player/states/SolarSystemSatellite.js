@@ -1,9 +1,7 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
+import '@ircam/sc-components/sc-filetree.js';
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -307,15 +305,17 @@ export default class SolarSystemSatellite extends State {
         <div>
           <h2>select source</h2>
           <div style="position: relative;">
-            <sc-file-tree
-              height="150"
-              width="250"
+            <sc-filetree
+              style="
+                height: 150px;
+                width: 250px;
+              "
               value="${JSON.stringify(this.context.soundbankTreeRender)}";
               @input="${e => {
                 this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
                 this.context.participant.set({ sourceFilename: e.detail.value.name });
               }}"
-            ></sc-file-tree>
+            ></sc-filetree>
             ${this.sourceDisplay.render()}
             <sc-transport
               id="transport-source"
@@ -323,9 +323,9 @@ export default class SolarSystemSatellite extends State {
                 position: absolute;
                 bottom: 4px;
                 left: 260px;
+                height: 40px;
               "
-              buttons="[play, stop]"
-              height="40"
+              .buttons=${["play", "stop"]}
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
           </div>    
@@ -358,20 +358,19 @@ export default class SolarSystemSatellite extends State {
                 <h3>${paramLabels[param]}</h3>
                 <div>
                   <sc-slider
+                    style="width: ${sliderWidth}px;"
                     id="slider-${param}"
                     min="${schema[param].min}"
                     max="${schema[param].max}"
                     value="${this.context.participant.get(param)}"
-                    width="${sliderWidth}"
-                    display-number
+                    number-box
                     @input="${e => this.updateParamValue(param, e.detail.value)}"
                     @change="${e => this.updateParamPrevValue(param, e.detail.value)}"
                   ></sc-slider>
                   <sc-button
-                    width="150"
-                    text="previous value"
+                    style="width: 150px;"
                     @input="${e => this.switchValueSlider(param)}"
-                  >
+                  >previous value</sc-button>
                 </div>
               </div>
             `

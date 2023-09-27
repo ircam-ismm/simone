@@ -1,10 +1,11 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
-import '@ircam/simple-components/sc-clock.js';
+
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-loop.js';
+import '@ircam/sc-components/sc-record.js';
+import '@ircam/sc-components/sc-clock.js';
+import '@ircam/sc-components/sc-midi.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import AnalyzerEngine from '../synth/AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
@@ -17,6 +18,7 @@ const paramLabels = {
   detune: 'detune',
   grainPeriod: 'period',
   grainDuration: 'duration',
+  randomizer: 'random',
 };
 
 export default class SolarSystemOmegaSolo extends State {
@@ -232,6 +234,7 @@ export default class SolarSystemOmegaSolo extends State {
           detune: values.detune,
           grainPeriod: values.grainPeriod,
           grainDuration: values.grainDuration,
+          randomizer: values.randomizer,
         };
         newPreset[name] = params;
       }
@@ -266,7 +269,7 @@ export default class SolarSystemOmegaSolo extends State {
         "
       >
       ${
-        ['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+        ['volume', 'detune', 'grainPeriod', 'grainDuration', 'randomizer'].map(param => {
           return html`
             <div style="width: ${nPlayers * 50}px">
               <h3>${paramLabels[param]}</h3>
@@ -289,11 +292,14 @@ export default class SolarSystemOmegaSolo extends State {
                       >
                         <p>${name}</p>
                         <sc-slider
+                          id="slider-params-${name}-${param}"
+                          style="
+                            height: 200px;
+                            width: 40px;
+                          "
                           min="${schema[param].min}"
                           max="${schema[param].max}"
                           value="${state.get(param)}"
-                          width="40"
-                          height="200"
                           orientation="vertical"
                           @input="${e => {
                             const update = {};
@@ -345,12 +351,12 @@ export default class SolarSystemOmegaSolo extends State {
                 "
                 >
                   <sc-button
-                    width="70"
-                    text="reboot"
+                    id="button-reboot-${name}"
+                    style="width: 70px;"
                     @input="${e => {
                       state.set({ reboot: true });
                     }}"
-                  ></sc-button>
+                  >reboot</sc-button>
                 </div>
                 <div style="
                   display: flex;
@@ -359,8 +365,9 @@ export default class SolarSystemOmegaSolo extends State {
                   align-items: center;
                 ">
                   <sc-transport
-                    buttons="[play, stop]"
-                    width="50"
+                    id="transport-mosaicing-${name}"
+                    style="width: 50px;"
+                    .buttons=${["play", "stop"]}
                     state="${state.get('mosaicingActive') ? 'play' : 'stop'}"
                     @change="${e => state.set({ mosaicingActive: e.detail.value === 'play' })}"
                   ></sc-transport>
@@ -398,7 +405,7 @@ export default class SolarSystemOmegaSolo extends State {
                   </div>
                 </div>
 
-                ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+                ${['volume', 'detune', 'grainPeriod', 'grainDuration', 'randomizer'].map(param => {
                   const schema = state.getSchema();
                   return html`
                     <div style="
@@ -410,11 +417,12 @@ export default class SolarSystemOmegaSolo extends State {
                     ">
                       ${paramLabels[param]}
                       <sc-slider
+                        id="slider-satellite-${name}-${param}"
+                        style="width: 300px;"
                         min="${schema[param].min}"
                         max="${schema[param].max}"
                         value="${state.get(param)}"
-                        width="300"
-                        display-number
+                        number-box
                         @input="${e => {
                           const update = {};
                           update[param] = e.detail.value;
@@ -453,7 +461,7 @@ export default class SolarSystemOmegaSolo extends State {
     if (window.innerWidth < 1000) {
       groupSliderWidth = this.waveformWidthLarge;
     } else {
-      groupSliderWidth = (this.waveformWidthLarge - 200) / 4;
+      groupSliderWidth = (this.waveformWidthLarge - 200) / 5;
     }
 
     return html`
@@ -466,13 +474,9 @@ export default class SolarSystemOmegaSolo extends State {
       "
       >
         <h1> ${this.context.participant.get('name')} [id: ${this.context.checkinId}] </h1>
-        <div style="margin-left: 20px; width: 300px;">
-          <h3>Message from experimenter</h3>
-          <p id="messageBox"></p>
-        </div>
       </div>
 
-
+      <sc-midi></sc-midi>
 
       <!-- Recorder -->
       <div style="
@@ -490,8 +494,9 @@ export default class SolarSystemOmegaSolo extends State {
                 position: absolute;
                 bottom: 4px; 
                 left: 2px;
+                width: 40px;
+                height: 40px;
               "
-              height="40"
               @change="${e => {
                 e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
                 this.recording = e.detail.value;
@@ -503,9 +508,9 @@ export default class SolarSystemOmegaSolo extends State {
                 position: absolute;
                 bottom: 4px; 
                 left: 45px;
+                height: 20px;
+                width: 150px;
               "
-              height="20"
-              width="150"
               .getTimeFunction="${() => {
                 if (this.recording) {
                   this.recTime = this.context.sync.getSyncTime() - this.startRecTime;
@@ -515,14 +520,16 @@ export default class SolarSystemOmegaSolo extends State {
             ></sc-clock>
           </div>
           <sc-button
-            width="${this.waveformWidthRecorder}"
-            height="39"
-            text="↓ use as target ↓"
+            id="button-set-target"
+            style="
+              width: ${this.waveformWidthRecorder}px;
+              height: 39px;
+            "
             selected
             @input="${e => {
               this.setTargetFile(this.recordedBuffer);
             }}"
-          ></sc-button>
+          >↓ use as target ↓</sc-button>
         </div>
       </div>
 
@@ -552,20 +559,21 @@ export default class SolarSystemOmegaSolo extends State {
             align-items: ${window.innerWidth < 1000 ? 'flex-start' : 'flex-end'}
           ">
             <sc-transport
-              buttons="[play, stop]"
-              height="50"
+              style="height: 50px;"
+              .buttons=${["play", "stop"]}
               @change="${e => this.setGroupParam('mosaicingActive', e.detail.value === 'play')}"
             ></sc-transport>
-            ${['volume', 'detune', 'grainPeriod', 'grainDuration'].map(param => {
+            ${['volume', 'detune', 'grainPeriod', 'grainDuration', 'randomizer'].map(param => {
               const schema = this.context.participant.getSchema();
               return html`
                 <div>
                   <h3>${param}</h3>
                   <sc-slider
+                    id="slider-group-${param}"
+                    style="width: ${groupSliderWidth}px;"
                     min="${schema[param].min}"
                     max="${schema[param].max}"
-                    display-number
-                    width="${groupSliderWidth}"
+                    number-box
                     @input="${e => this.setGroupParam(param, e.detail.value)}"
                   ></sc-slider>
                 </div>
@@ -575,27 +583,27 @@ export default class SolarSystemOmegaSolo extends State {
 
           <div style="margin-top: 10px">
               <sc-button
-                text="all"
-                width="70"
+                id="button-group-all"
+                style="width: 70px;"
                 @input="${e => {
                   this.groupControlStates = {...this.players};
                   this.context.render();
                 }}"
-              ></sc-button>
+              >all</sc-button>
               <sc-button
-                text="none"
-                width="70"
+                id="button-group-none"
+                style="width: 70px;"
                 @input="${e => {
                   this.groupControlStates = {};
                   this.context.render();
                 }}"
-              ></sc-button>
+              >none</sc-button>
               ${Object.entries(this.players).map(([name, state]) => {
                 if (state) {
                   return html`
                     <sc-button
-                      text="${name}"
-                      width="40"
+                      id="button-group-${name}"
+                      style="width: 40px;"
                       .selected="${name in this.groupControlStates}"
                       @input="${e => {
                         if (name in this.groupControlStates) {
@@ -605,7 +613,7 @@ export default class SolarSystemOmegaSolo extends State {
                         }
                         this.context.render();
                       }}"
-                    ></sc-button>
+                    >${name}</sc-button>
                   `
                 }
               })}
@@ -616,13 +624,13 @@ export default class SolarSystemOmegaSolo extends State {
             ${Object.keys(this.panelRenders).map(panelType => {
               return html`
                 <sc-button
-                  text="${panelType}"
+                  id="button-panel-${panelType}"
                   .selected="${panelType === this.panelType}"
                   @input="${e => {
                     this.panelType = panelType;
                     this.context.render();
                   }}"
-                ></sc-button>
+                >${panelType}</sc-button>
               `
             })}
             
@@ -640,34 +648,34 @@ export default class SolarSystemOmegaSolo extends State {
       ">
         <h2>presets</h2>
         <sc-button
-          text="save"
-          width="70"
+          id="button-preset-save"
+          style="width: 70px;"
           .selected="${this.presetMode === 'save'}"
           @input="${e => {
             this.presetMode = 'save';
             this.context.render();
           }}"
-        ></sc-button>
+        >save</sc-button>
         <sc-button
-          text="load"
-          width="70"
+          id="button-preset-load"
+          style="width: 70px;"
           .selected="${this.presetMode === 'load'}"
           @input="${e => {
             this.presetMode = 'load';
             this.context.render();
           }}"
-        ></sc-button>
+        >load</sc-button>
         ${Array(this.nPresets).fill().map((_, i) => {
           return html`
             <sc-button
-              text="${i+1}"
-              width="40"
+              id="button-preset-${i+1}"
+              style="width: 70px;"
               .selected="${i+1 in this.presets}"
               @input="${e => {
                 this.presetMode === 'save' ? this.savePreset(i+1) : this.loadPreset(i+1);
                 this.context.render();
               }}"
-            ></sc-button>
+            >${i + 1}</sc-button>
           `
         })}
 

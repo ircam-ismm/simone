@@ -1,10 +1,8 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
-import '@ircam/simple-components/sc-clock.js';
+
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-record.js';
+import '@ircam/sc-components/sc-clock.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import AnalyzerEngine from '../synth/AnalyzerEngine';
 import { Scheduler } from 'waves-masters';
@@ -222,8 +220,8 @@ export default class SolarSystemOmega extends State {
               position: absolute;
               bottom: 4px; 
               left: 2px;
+              height: 40px;
             "
-            height="40"
             @change="${e => {
               e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
               this.recording = e.detail.value;
@@ -235,9 +233,9 @@ export default class SolarSystemOmega extends State {
               position: absolute;
               bottom: 4px; 
               left: 45px;
+              height: 20px;
+              width: 150px;
             "
-            height="20"
-            width="150"
             .getTimeFunction="${() => {
               if (this.recording) {
                 this.recTime = this.context.sync.getSyncTime() - this.startRecTime;
@@ -247,14 +245,15 @@ export default class SolarSystemOmega extends State {
           ></sc-clock>
         </div>
         <sc-button
-          width="${this.waveformWidthRecorder}"
-          height="39"
-          text="↓ use as target ↓"
+          style="
+            width: ${this.waveformWidthRecorder}px;
+            height: 39px;
+          "
           selected
           @input="${e => {
             this.setTargetFile(this.recordedBuffer);
           }}"
-        ></sc-button>
+        >↓ use as target ↓</sc-button>
       </div>
 
 
@@ -303,8 +302,8 @@ export default class SolarSystemOmega extends State {
                     <p>${state.get('sourceFilename')}</p>
                   </div>
                   <sc-transport
-                    buttons="[play, stop]"
-                    width="50"
+                    style="width: 50px;"
+                    .buttons=${["play", "stop"]}
                     @change="${e => state.set({ mosaicingActive: e.detail.value === 'play'})}"
                     }}"
                   ></sc-transport>

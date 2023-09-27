@@ -1,9 +1,9 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
+import '@ircam/sc-components/sc-filetree.js';
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-loop.js';
+import '@ircam/sc-components/sc-record.js';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -320,21 +320,19 @@ export default class DrumMachineContinuous extends State {
                     position: absolute;
                     bottom: 10px;
                     left: 10px;
+                    width: 40px;
                   "
-                  width="40";
-                  text="*2"
                   @input="${e => this.changeSelectionLength("longer")}"
-                ></sc-button>
+                >*2</sc-button>
                 <sc-button
                   style="
                     position: absolute;
                     bottom: 10px;
                     left: 55px;
+                    width: 40px;
                   "
-                  width="40";
-                  text="/2"
                   @input="${e => this.changeSelectionLength("smaller")}"
-                ></sc-button>
+                >/2</sc-button>
               </div>
 
               <div style="position: relative">
@@ -354,7 +352,7 @@ export default class DrumMachineContinuous extends State {
                     bottom: 10px;
                     left: 45px;
                   "
-                  buttons="[play, stop]"
+                  .buttons=${["play", "stop"]}
                   @change="${e => this.transportRecordFile(e.detail.value)}"
                 ></sc-transport>
                 <sc-button
@@ -362,12 +360,11 @@ export default class DrumMachineContinuous extends State {
                     position: absolute;
                     bottom: 10px;
                     left: 110px;
+                    height: 29px;
+                    width: 140px;
                   "
-                  height="29";
-                  width="140";
-                  text="send to target"
                   @input="${e => this.setTargetFile(this.recordedBuffer)}"
-                ></sc-button>
+                >send to target</sc-button>
               </div>
             </div>
             <div style="margin-left: 20px">
@@ -381,10 +378,12 @@ export default class DrumMachineContinuous extends State {
             <div>
               <h3>start mosaicing</h3>
               <sc-transport
-                style="display: block"
+                style="
+                  display: block;
+                  width: 50px;
+                "
                 id="transport-mosaicing"
-                buttons="[play, stop]"
-                width="50"
+                .buttons=${["play", "stop"]}
                 @change="${e => this.transportMosaicing(e.detail.value)}"
               ></sc-transport>
             </div>
@@ -398,12 +397,12 @@ export default class DrumMachineContinuous extends State {
             >
               <h3>volume (dB)</h3>
               <sc-slider
+                style="width: 300px;
                 id="slider-volume"
                 min="-70"
                 max="0"
                 value="${this.context.participant.get('volume')}"
-                width="300"
-                display-number
+                number-box
                 @input="${e => {
                   this.synthEngine.volume = decibelToLinear(e.detail.value);
                   this.context.participant.set({volume: e.detail.value});
@@ -417,20 +416,18 @@ export default class DrumMachineContinuous extends State {
               ></sc-slider>
 
               <sc-button
-                width="90"
-                text="prev value"
+                style="width: 90px;"
                 @input="${e => this.switchValueSlider('volume')}"
-              >
-              </sc-button>
+              >prev value</sc-button>
 
               <h3>detune</h3>
               <sc-slider
+                style="width: 300px;"
                 id="slider-detune"
                 min="-12"
                 max="12"
                 value="${this.context.participant.get('detune')}"
-                width="300"
-                display-number
+                number-box
                 @input="${e => {
                   this.synthEngine.detune = e.detail.value * 100;
                   this.context.participant.set({ detune: e.detail.value });
@@ -444,11 +441,9 @@ export default class DrumMachineContinuous extends State {
               ></sc-slider>
 
               <sc-button
-                width="90"
-                text="prev value"
+                style="width: 90px;"
                 @input="${e => this.switchValueSlider('detune')}"
-              >
-              </sc-button>
+              >prev value</sc-button>
 
             </div>
 
@@ -462,12 +457,12 @@ export default class DrumMachineContinuous extends State {
 
               <h3>grain period</h3>
               <sc-slider
+                style="width: 300px;"
                 id="slider-grainPeriod"
                 min="0.01"
                 max="0.1"
                 value="${this.context.participant.get('grainPeriod')}"
-                width="300"
-                display-number
+                number-box
                 @input="${e => {
                   this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
@@ -482,20 +477,18 @@ export default class DrumMachineContinuous extends State {
               ></sc-slider>
 
               <sc-button
-                width="90"
-                text="prev value"
+                style="width: 90px;"
                 @input="${e => this.switchValueSlider('grainPeriod')}"
-              >
-              </sc-button>
+              >prev value</sc-button>
 
               <h3>grain duration</h3>
               <sc-slider
+                style="width: 300px;"
                 id="slider-grainDuration"
                 min="0.02"
                 max="0.5"
                 value="${this.context.participant.get('grainDuration')}"
-                width="300"
-                display-number
+                number-box
                 @input="${e => {
                   this.synthEngine.setGrainDuration(e.detail.value);
                   this.context.participant.set({ grainDuration: e.detail.value });
@@ -509,23 +502,21 @@ export default class DrumMachineContinuous extends State {
               ></sc-slider>
               
               <sc-button
-                width="90"
-                text="prev value"
+                style="width: 90px;"
                 @input="${e => this.switchValueSlider('grainDuration')}"
-              >
-              </sc-button>
+              >prev value</sc-button>
             </div>
           </div>
 
           <h3>Source</h3>
 
-          <sc-file-tree
+          <sc-filetree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => {
               this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name]);
               this.context.participant.set({ sourceFilename: e.detail.value.name });
             }}"
-          ></sc-file-tree>
+          ></sc-filetree>
 
           <div style="
             display: inline;
@@ -549,7 +540,7 @@ export default class DrumMachineContinuous extends State {
                 bottom: 0;
                 left: 70px;
               "
-              buttons="[play, stop]"
+              .buttons=${["play", "stop"]}
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
           </div>

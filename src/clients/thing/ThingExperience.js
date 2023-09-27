@@ -159,6 +159,9 @@ class ThingExperience extends AbstractExperience {
       if ('grainDuration' in updates) {
         this.synthEngine.setGrainDuration(updates.grainDuration);
       }
+      if ('randomizer' in updates) {
+        this.synthEngine.randomizer = updates.randomizer;
+      }
       if ('reboot' in updates) {
         console.log('rebooting');
         execSync('sudo reboot now');

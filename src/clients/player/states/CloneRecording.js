@@ -1,9 +1,9 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
+
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-loop.js';
+import '@ircam/sc-components/sc-record.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import State from './State.js';
 import { html } from 'lit/html.js';
@@ -158,7 +158,7 @@ export default class CloneRecording extends State {
                   bottom: 0;
                   left: 35px;
                 "
-                buttons="[play, stop]"
+                .buttons=${["play", "stop"]}
                 @change="${e => this.transportRecordedFile(e.detail.value)}"
               ></sc-transport>
 
@@ -166,12 +166,14 @@ export default class CloneRecording extends State {
 
             
             <sc-button
-              style="margin: 20px;"
+              style="
+                margin: 20px;
+                height: 40px;              
+                width: ${this.waveformWidth/2}px;
+              "
               width="${this.waveformWidth/2}"
-              height="40"
-              text="submit"
               @input="${e => this.uploadRecordedFile()}"
-            ></sc-button>
+            >submit</sc-button>
           </div>
         </div>
       `

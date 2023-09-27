@@ -4,12 +4,10 @@ import renderInitializationScreens from '@soundworks/template-helpers/client/ren
 import WaveformDisplay from '../utils/WaveformDisplay';
 import toWav from 'audiobuffer-to-wav';
 
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
-import '@ircam/simple-components/sc-text.js';
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-record.js';
+import '@ircam/sc-components/sc-text.js';
 
 class RecorderExperience extends AbstractExperience {
   constructor(client, config, $container, audioContext) {
@@ -62,7 +60,6 @@ class RecorderExperience extends AbstractExperience {
       if (e.data.size > 0) {
         this.currentRecording = e.data;
         this.fileReader.readAsArrayBuffer(e.data);
-        console.log(e.data);
       }
     }
 
@@ -197,8 +194,8 @@ class RecorderExperience extends AbstractExperience {
                 position: absolute;
                 bottom: 2px;
                 left: 0px;
+                height: ${this.buttonHeight}px;
               "
-              height="${this.buttonHeight}"
               @change="${e => e.detail.value ? this.mediaRecorder.start() : this.mediaRecorder.stop()}"
             ></sc-record>
             <sc-transport
@@ -207,9 +204,9 @@ class RecorderExperience extends AbstractExperience {
                 position: absolute;
                 bottom: 2px;
                 left: ${this.buttonHeight+4}px;
+                height: ${this.buttonHeight}px;
               "
-              buttons="[play, stop]"
-              height="${this.buttonHeight}"
+              .buttons=${["play", "stop"]}
               @change="${e => this.transportRecordedFile(e.detail.value)}"
             ></sc-transport>
             
@@ -219,23 +216,26 @@ class RecorderExperience extends AbstractExperience {
 
           <h2>filename (cmd/ctrl+s to confirm)</h2>
           <sc-text
-            width="${this.waveformWidth}"
-            height="${this.buttonHeight}"
+            style="
+              width: ${this.waveformWidth}px;
+              height: ${this.buttonHeight}px;
+            "
             @change="${e => this.filename = e.detail.value}"
+            editable
           ></sc-text>
 
           <sc-button
-            style="margin: 20px;"
-            width="${this.waveformWidth}"
-            height="40"
-            text="submit"
+            style="
+              margin: 20px;
+              height: 40px;
+              width: ${this.waveformWidth}px;
+            "
             @input="${e => this.uploadRecordedFile()}"
-          ></sc-button>
+          >submit</sc-button>
 
           <sc-text 
+            style="width: ${this.statusWidth}px;"
             id="status"
-            width="${this.statusWidth}"
-            readonly
           ></sc-text>
         </div>
       </div>

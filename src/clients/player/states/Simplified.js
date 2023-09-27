@@ -1,6 +1,6 @@
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-record.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-record.js';
 import decibelToLinear from '../math/decibelToLinear.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -253,8 +253,10 @@ export default class Simplified extends State {
         >
           <div style="margin-bottom: 5px; position: relative; height: 50px;">
             <sc-record
-              style="float: left;"
-              height="50"
+              style="
+                float: left;
+                height: 50px;
+              "
               @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
             ></sc-record>
 
@@ -273,13 +275,14 @@ export default class Simplified extends State {
             "
           >
             <sc-button
-              height="40";
-              width="150";
-              text="2. Load sound"
+              style="
+                height: 40px;
+                width: 150px;
+              "
               @input="${e => {
                 this.setTargetFile(this.recordedBuffer);
               }}"
-            ></sc-button>
+            >2. load sound</sc-button>
 
             <div style="
               position: absolute;
@@ -299,10 +302,13 @@ export default class Simplified extends State {
           
             <div style="width: 400px; position: absolute; top: 0; left: 40%; margin-top: 20px">
               <sc-transport
-                style="float: left; margin-right: 10px"
+                style="
+                  float: left;
+                  margin-right: 10px;
+                  width: 50px;
+                "
                 id="transport-mosaicing"
-                buttons="[play, stop]"
-                width="50"
+                .buttons=${["play", "stop"]}
                 @change="${e => this.transportMosaicing(e.detail.value)}"
               ></sc-transport>
               <h2>3. Play</h2>
@@ -322,11 +328,11 @@ export default class Simplified extends State {
             <div style="margin-right: 40px">
               <h2>volume</h2>
               <sc-slider
+                style="width: 240px;"
                 id="slider-volume"
                 min="-70"
                 max="0"
                 value="${this.context.participant.get('volume')}"
-                width="240"
                 @input="${e => {
                   this.synthEngine.volume = decibelToLinear(e.detail.value);
                   this.context.participant.set({volume: e.detail.value});
@@ -337,11 +343,11 @@ export default class Simplified extends State {
             <div style="margin-right: 40px">
               <h2>pitch</h2>
               <sc-slider
+                style="width: 240px;"
                 id="slider-detune"
                 min="-12"
                 max="12"
                 value="${this.context.participant.get('detune')}"
-                width="240"
                 @input="${e => {
                   this.synthEngine.detune = e.detail.value * 100;
                   this.context.participant.set({ detune: e.detail.value });
@@ -361,11 +367,11 @@ export default class Simplified extends State {
             <div style="margin-right: 30px">
               <h2>density</h2>
               <sc-slider
+                style="width: 240px;"
                 id="slider-density"
                 min="0"
                 max="1"
                 value="0.5"
-                width="240"
                 @input="${e => {
                   const duration = 0.48*e.detail.value + 0.02;
                   const period = -0.18*e.detail.value + 0.2;

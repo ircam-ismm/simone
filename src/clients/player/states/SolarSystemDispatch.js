@@ -1,5 +1,4 @@
 import State from './State.js';
-import '@ircam/simple-components/sc-button.js';
 
 
 export default class SolarSystemDispatch extends State {

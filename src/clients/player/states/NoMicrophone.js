@@ -1,9 +1,9 @@
-import '@ircam/simple-components/sc-file-tree.js';
-import '@ircam/simple-components/sc-button.js';
-import '@ircam/simple-components/sc-slider.js';
-import '@ircam/simple-components/sc-transport';
-import '@ircam/simple-components/sc-loop.js';
-import '@ircam/simple-components/sc-record.js';
+import '@ircam/sc-components/sc-filetree.js';
+import '@ircam/sc-components/sc-button.js';
+import '@ircam/sc-components/sc-slider.js';
+import '@ircam/sc-components/sc-transport';
+import '@ircam/sc-components/sc-loop.js';
+import '@ircam/sc-components/sc-record.js';
 import Mfcc from '../../utils/Mfcc.js';
 import WaveformDisplay from '../../utils/WaveformDisplay';
 import createKDTree from 'static-kdtree';
@@ -172,10 +172,10 @@ export default class NoMicrophone extends State {
         <div style="padding-left: 20px; padding-right: 20px">
           <h3>Target</h3>
 
-          <sc-file-tree
+          <sc-filetree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => this.setTargetFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
-          ></sc-file-tree>
+          ></sc-filetree>
 
           <div style="
             display: inline;
@@ -188,21 +188,19 @@ export default class NoMicrophone extends State {
                 position: absolute;
                 bottom: 10px;
                 left: 10px;
+                width: 40px;
               "
-              width="40";
-              text="*2"
               @input="${e => this.changeSelectionLength("longer")}"
-            ></sc-button>
+            >*2</sc-button>
             <sc-button
               style="
                 position: absolute;
                 bottom: 10px;
                 left: 55px;
+                width: 40px;
               "
-              width="40";
-              text="/2"
               @input="${e => this.changeSelectionLength("smaller")}"
-            ></sc-button>
+            >/2</sc-button>
           </div>
 
 
@@ -212,10 +210,12 @@ export default class NoMicrophone extends State {
             <div>
               <h3>start mosaicing</h3>
               <sc-transport
-                style="display: block"
+                style="
+                  display: block;
+                  width: 50px;
+                "
                 id="transport-mosaicing"
-                buttons="[play, stop]"
-                width="50"
+                .buttons=${["play", "stop"]}
                 @change="${e => this.transportMosaicing(e.detail.value)}"
               ></sc-transport>
             </div>
@@ -229,20 +229,20 @@ export default class NoMicrophone extends State {
             >
               <h3>volume</h3>
               <sc-slider
+                style="width: 300px;"
                 min="0"
                 max="1"
                 value="0.5"
-                width="300"
-                display-number
+                number-box
                 @input="${e => this.synthEngine.volume = e.detail.value}"
               ></sc-slider>
 
               <h3>detune</h3>
               <sc-slider
+                style="width: 300px;"
                 min="-12"
                 max="12"
-                width="300"
-                display-number
+                number-box
                 @input="${e => this.synthEngine.detune = e.detail.value * 100}"
               ></sc-slider>
 
@@ -255,14 +255,13 @@ export default class NoMicrophone extends State {
                 left: 480px;
               "
             >
-
               <h3>grain period</h3>
               <sc-slider
+                style="width: 300px;"
                 min="0.0058"
                 max="0.046"
                 value="0.0116"
-                width="300"
-                display-number
+                number-box
                 @input="${e => {
                   this.analyzerEngine.setPeriod(e.detail.value);
                   this.synthEngine.setGrainPeriod(e.detail.value);
@@ -271,11 +270,11 @@ export default class NoMicrophone extends State {
 
               <h3>grain duration</h3>
               <sc-slider
+                style="width: 300px;"
                 min="0.02"
                 max="0.5"
                 value="0.25"
-                width="300"
-                display-number
+                number-box
                 @input="${e => this.synthEngine.setGrainDuration(e.detail.value)}"
               ></sc-slider>
             </div>
@@ -283,10 +282,10 @@ export default class NoMicrophone extends State {
 
           <h3>Source</h3>
 
-          <sc-file-tree
+          <sc-filetree
             value="${JSON.stringify(this.context.soundbankTreeRender)}";
             @input="${e => this.setSourceFile(this.context.audioBufferLoader.data[e.detail.value.name])}"
-          ></sc-file-tree>
+          ></sc-filetree>
 
           <div style="
             display: inline;
@@ -310,7 +309,7 @@ export default class NoMicrophone extends State {
                 bottom: 0;
                 left: 70px;
               "
-              buttons="[play, stop]"
+              .buttons=${["play", "stop"]}
               @change="${e => this.transportSourceFile(e.detail.value)}"
             ></sc-transport>
           </div>

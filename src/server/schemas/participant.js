@@ -53,6 +53,12 @@ export default {
     min: 0.02,
     max: 0.5
   },
+  randomizer: {
+    type: 'float',
+    default: 1,
+    min: 1, 
+    max: 10,
+  },
   density: {
     type: 'float',
     default: 0.5,
