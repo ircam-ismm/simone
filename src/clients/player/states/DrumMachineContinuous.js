@@ -320,6 +320,7 @@ export default class DrumMachineContinuous extends State {
                     position: absolute;
                     bottom: 10px;
                     left: 10px;
+                    height: 40px;
                     width: 40px;
                   "
                   @input="${e => this.changeSelectionLength("longer")}"
@@ -329,6 +330,7 @@ export default class DrumMachineContinuous extends State {
                     position: absolute;
                     bottom: 10px;
                     left: 55px;
+                    height: 40px;
                     width: 40px;
                   "
                   @input="${e => this.changeSelectionLength("smaller")}"
@@ -380,7 +382,7 @@ export default class DrumMachineContinuous extends State {
               <sc-transport
                 style="
                   display: block;
-                  width: 50px;
+                  height: 50px;
                 "
                 id="transport-mosaicing"
                 .buttons=${["play", "stop"]}

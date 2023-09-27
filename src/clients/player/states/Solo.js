@@ -394,6 +394,7 @@ export default class Solo extends State {
                 bottom: 4px; 
                 left: 2px;
                 height: 40px;
+                width: 40px;
               "
               @change="${e => {
                 e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
@@ -479,7 +480,7 @@ export default class Solo extends State {
                 position: absolute;
                 bottom: 4px;
                 left: 2px;
-                width: 60px;
+                height: 60px;
               "
               id="transport-mosaicing"
               .buttons=${["play", "stop"]}

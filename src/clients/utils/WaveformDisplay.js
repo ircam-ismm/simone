@@ -43,7 +43,9 @@ export default class WaveformDisplay {
       this.selectionStartPos = 0;
       this.selectionEndTime = 0;
       this.selectionEndPos = 0;
-      this.selectionOffset = 0;
+      this.selectionOffsetStart = 0;
+      this.selectionOffsetEnd = 0;
+      this.selectionWidth = 0;
 
       this.selectionSvg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       this.selectionSvg.setAttribute('fill', 'white');
@@ -52,7 +54,43 @@ export default class WaveformDisplay {
       this.selectionSvg.style.opacity = 0.4;
       this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
       this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
+
       this.container.appendChild(this.selectionSvg);
+    }
+
+    if (this.freeSelection) {
+      this.leftHandle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      this.leftHandle.setAttribute('x1', `${this.selectionStartPos}`);
+      this.leftHandle.setAttribute('y1', 0);
+      this.leftHandle.setAttribute('x2', `${this.selectionStartPos}`);
+      this.leftHandle.setAttribute('y2', `${this.height}`);
+      this.leftHandle.style.stroke = "goldenrod";
+      this.leftHandle.style.strokeWidth = `${0}px`;
+      this.leftHandle.style.cursor = "grab";
+      this.leftHandle.addEventListener('mouseover', () => {
+        this.leftHandle.style.strokeWidth = "6px";
+      });
+      this.leftHandle.addEventListener('mouseout', () => {
+        this.leftHandle.style.strokeWidth = "4px";
+      });
+
+      this.rightHandle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      this.rightHandle.setAttribute('x1', `${this.selectionEndPos}`);
+      this.rightHandle.setAttribute('y1', 0);
+      this.rightHandle.setAttribute('x2', `${this.selectionEndPos}`);
+      this.rightHandle.setAttribute('y2', `${this.height}`);
+      this.rightHandle.style.stroke = "goldenrod";
+      this.rightHandle.style.strokeWidth = `${0}px`;
+      this.rightHandle.style.cursor = "grab";
+      this.rightHandle.addEventListener('mouseover', () => {
+        this.rightHandle.style.strokeWidth = "6px";
+      });
+      this.rightHandle.addEventListener('mouseout', () => {
+        this.rightHandle.style.strokeWidth = "4px";
+      });
+
+      this.container.appendChild(this.leftHandle);
+      this.container.appendChild(this.rightHandle);
     }
 
     if (this.hasCursor) {
@@ -68,9 +106,25 @@ export default class WaveformDisplay {
     this.mouseDown = this.mouseDown.bind(this);
     this.mouseMove = this.mouseMove.bind(this);
     this.mouseUp = this.mouseUp.bind(this);
+
     this.touchStartTarget = this.touchStartTarget.bind(this);
     this.touchMoveTarget = this.touchMoveTarget.bind(this);
     this.touchEndTarget = this.touchEndTarget.bind(this);
+
+    this.leftHandleMouseDown = this.leftHandleMouseDown.bind(this);
+    this.leftHandleMouseMove = this.leftHandleMouseMove.bind(this);
+    this.leftHandleMouseUp = this.leftHandleMouseUp.bind(this);
+    this.rightHandleMouseDown = this.rightHandleMouseDown.bind(this);
+    this.rightHandleMouseMove = this.rightHandleMouseMove.bind(this);
+    this.rightHandleMouseUp = this.rightHandleMouseUp.bind(this);
+
+    this.leftHandleTouchStart = this.leftHandleTouchStart.bind(this);
+    this.leftHandleTouchMove = this.leftHandleTouchMove.bind(this);
+    this.leftHandleTouchEnd = this.leftHandleTouchEnd.bind(this);
+    this.rightHandleTouchStart = this.rightHandleTouchStart.bind(this);
+    this.rightHandleTouchMove = this.rightHandleTouchMove.bind(this);
+    this.rightHandleTouchEnd = this.rightHandleTouchEnd.bind(this);
+    
 
     this.activePointers = new Map();
     this.pointerIds = []; // we want to keep the order of appearance consistant
@@ -78,9 +132,12 @@ export default class WaveformDisplay {
     if (this.hasSelection) {
       this.container.addEventListener('mousedown', this.mouseDown);
       this.container.addEventListener('touchstart', this.touchStartTarget);
-      // if (this.freeSelection) {
-      //   this.container.addEventListener('mousedown', this.mouseDown);
-      //   this.container.addEventListener('touchstart', this.touchStartTarget);
+      if (this.freeSelection) {
+        this.leftHandle.addEventListener('mousedown', this.leftHandleMouseDown);
+        this.rightHandle.addEventListener('mousedown', this.rightHandleMouseDown);
+        this.leftHandle.addEventListener('touchstart', this.leftHandleTouchStart);
+        this.rightHandle.addEventListener('touchstart', this.rightHandleTouchStart);
+      }
       // } else {
       //   this.selectionSvg.addEventListener('mousedown', this.mouseDown);
       //   this.selectionSvg.addEventListener('touchstart', this.touchStartTarget);
@@ -136,8 +193,10 @@ export default class WaveformDisplay {
   setSelectionStartTime(time) {
     this.selectionStartPos = this.width * (time - this.startTime) / this.duration;
     this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
-    this.selectionOffset = this.selectionStartPos;
+    this.selectionOffsetStart = this.selectionStartPos;
+    this.selectionOffsetEnd = this.selectionEndPos;
     this.selectionSvg.setAttribute('x', this.selectionStartPos);
+    
 
     if (this.cbSelectionChange) {
       const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
@@ -302,12 +361,22 @@ export default class WaveformDisplay {
       this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
       this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
       this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
+      this.leftHandle.setAttribute('x1', this.selectionStartPos);
+      this.leftHandle.setAttribute('x2', this.selectionStartPos);
+      this.leftHandle.style.strokeWidth = `${4}px`;
+      this.rightHandle.setAttribute('x1', this.selectionEndPos);
+      this.rightHandle.setAttribute('x2', this.selectionEndPos);
+      this.rightHandle.style.strokeWidth = `${4}px`;
     } else if (this.clickedSelection) {
       const mouseMov = e.clientX - this.mouseDownX;
-      this.selectionStartPos = this.selectionOffset + mouseMov;
+      this.selectionStartPos = this.selectionOffsetStart + mouseMov;
       this.selectionStartPos = Math.min(Math.max(0, this.selectionStartPos), this.width - this.selectionWidth);
       this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
       this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+      this.leftHandle.setAttribute('x1', this.selectionStartPos);
+      this.leftHandle.setAttribute('x2', this.selectionStartPos);
+      this.rightHandle.setAttribute('x1', this.selectionEndPos);
+      this.rightHandle.setAttribute('x2', this.selectionEndPos);
     }
 
     if (this.cbSelectionChange) {
@@ -318,9 +387,71 @@ export default class WaveformDisplay {
   }
 
   mouseUp(e) {
-    this.selectionOffset = this.selectionStartPos;
+    this.selectionOffsetStart = this.selectionStartPos;
+    this.selectionOffsetEnd = this.selectionEndPos;
     window.removeEventListener('mousemove', this.mouseMove);
     window.removeEventListener('mouseup', this.mouseUp);
+  }
+
+  leftHandleMouseDown(e) {
+    e.stopPropagation();
+    this.mouseDownX = e.clientX;
+    window.addEventListener('mousemove', this.leftHandleMouseMove);
+    window.addEventListener('mouseup', this.leftHandleMouseUp);
+  }
+
+  leftHandleMouseMove(e) {
+    const mouseMoveX = e.clientX - this.mouseDownX;
+    this.selectionStartPos = this.selectionOffsetStart + mouseMoveX;
+    this.selectionStartPos = Math.min(this.selectionEndPos, Math.max(this.selectionStartPos, 0));
+    this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+    this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+    this.selectionSvg.setAttribute('width', `${this.selectionWidth}`);
+    this.leftHandle.setAttribute('x1', this.selectionStartPos);
+    this.leftHandle.setAttribute('x2', this.selectionStartPos);
+
+    if (this.cbSelectionChange) {
+      const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+      const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+      this.cbSelectionChange(selectionStartTime, selectionEndTime);
+    }
+  }
+
+  leftHandleMouseUp(e) {
+    this.selectionOffsetStart = this.selectionStartPos;
+    window.removeEventListener('mousemove', this.leftHandleMouseMove);
+    window.removeEventListener('mouseup', this.leftHandleMouseUp);
+  }
+
+  rightHandleMouseDown(e) {
+    e.stopPropagation();
+    this.mouseDownX = e.clientX;
+    window.addEventListener('mousemove', this.rightHandleMouseMove);
+    window.addEventListener('mouseup', this.rightHandleMouseUp);
+  }
+
+  rightHandleMouseMove(e) {
+    const mouseMoveX = e.clientX - this.mouseDownX;
+    this.selectionEndPos = this.selectionOffsetEnd + mouseMoveX;
+    this.selectionEndPos = Math.max(this.selectionStartPos, Math.min(this.selectionEndPos, this.width));
+    this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+    this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+    this.selectionSvg.setAttribute('width', `${this.selectionWidth}`);
+    this.rightHandle.setAttribute('x1', this.selectionEndPos);
+    this.rightHandle.setAttribute('x2', this.selectionEndPos);
+
+
+    if (this.cbSelectionChange) {
+      const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+      const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+      this.cbSelectionChange(selectionStartTime, selectionEndTime);
+    }
+  }
+
+  rightHandleMouseUp(e) {
+    this.selectionOffsetEnd = this.selectionEndPos;
+    window.removeEventListener('mousemove', this.rightHandleMouseMove);
+    window.removeEventListener('mouseup', this.rightHandleMouseUp);
   }
 
 
@@ -400,12 +531,22 @@ export default class WaveformDisplay {
           this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
           this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
           this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
+          this.leftHandle.setAttribute('x1', this.selectionStartPos);
+          this.leftHandle.setAttribute('x2', this.selectionStartPos);
+          this.leftHandle.style.strokeWidth = `${4}px`;
+          this.rightHandle.setAttribute('x1', this.selectionEndPos);
+          this.rightHandle.setAttribute('x2', this.selectionEndPos);
+          this.rightHandle.style.strokeWidth = `${4}px`;
         } else if (this.touchedSelection) {
           const touchMov = touch.clientX - this.touchDownX;
-          this.selectionStartPos = this.selectionOffset + touchMov;
+          this.selectionStartPos = this.selectionOffsetStart + touchMov;
           this.selectionStartPos = Math.min(Math.max(0, this.selectionStartPos), this.width - this.selectionWidth);
           this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
           this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+          this.leftHandle.setAttribute('x1', this.selectionStartPos);
+          this.leftHandle.setAttribute('x2', this.selectionStartPos);
+          this.rightHandle.setAttribute('x1', this.selectionEndPos);
+          this.rightHandle.setAttribute('x2', this.selectionEndPos);
         }
 
         if (this.cbSelectionChange) {
@@ -428,11 +569,135 @@ export default class WaveformDisplay {
     }
 
     if (this.pointerIds.length === 0) {
-      this.selectionOffset = this.selectionStartPos;
-      
+      this.selectionOffsetStart = this.selectionStartPos;
+      this.selectionOffsetEnd = this.selectionEndPos;
+
       window.removeEventListener('touchmove', this.touchMoveTarget);
       window.removeEventListener('touchend', this.touchEndTarget);
       window.removeEventListener('touchcancel', this.touchEndTarget);
+    }
+  }
+
+  leftHandleTouchStart(e) {
+    e.stopPropagation();
+
+    if (this.pointerIds.length === 0) {
+      window.addEventListener('touchmove', this.leftHandleTouchMove, { passive: false });
+      window.addEventListener('touchend', this.leftHandleTouchEnd);
+      window.addEventListener('touchcancel', this.leftHandleTouchEnd);
+    }
+
+    for (let touch of e.changedTouches) {
+      this.touchDownX = touch.clientX;
+      const id = touch.identifier;
+      this.pointerIds.push(id);
+      this.activePointers.set(id, touch);
+    }
+  }
+
+  leftHandleTouchMove(e) {
+    e.preventDefault(); 
+
+    for (let touch of e.changedTouches) {
+      const id = touch.identifier;
+      if (this.pointerIds.indexOf(id) !== -1) {
+        const touchMoveX = touch.clientX - this.touchDownX;
+        this.selectionStartPos = this.selectionOffsetStart + touchMoveX;
+        this.selectionStartPos = Math.min(this.selectionEndPos, Math.max(this.selectionStartPos, 0));
+        this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+        this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+        this.selectionSvg.setAttribute('width', `${this.selectionWidth}`);
+        this.leftHandle.setAttribute('x1', this.selectionStartPos);
+        this.leftHandle.setAttribute('x2', this.selectionStartPos);
+
+        if (this.cbSelectionChange) {
+          const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+          const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+          this.cbSelectionChange(selectionStartTime, selectionEndTime);
+        }
+      }
+    }
+  }
+
+  leftHandleTouchEnd(e) {
+    for (let touch of e.changedTouches) {
+      const pointerId = touch.identifier;
+      const index = this.pointerIds.indexOf(pointerId);
+      if (index !== -1) {
+        this.pointerIds.splice(index, 1);
+        this.activePointers.delete(pointerId);
+      }
+    }
+
+    if (this.pointerIds.length === 0) {
+      this.selectionOffsetStart = this.selectionStartPos;
+      this.selectionOffsetEnd = this.selectionEndPos;
+
+      window.removeEventListener('touchmove', this.leftHandleTouchMove);
+      window.removeEventListener('touchend', this.leftHandleTouchEnd);
+      window.removeEventListener('touchcancel', this.leftHandleTouchEnd);
+    }
+  }
+
+  rightHandleTouchStart(e) {
+    e.stopPropagation();
+
+    if (this.pointerIds.length === 0) {
+      window.addEventListener('touchmove', this.rightHandleTouchMove, { passive: false });
+      window.addEventListener('touchend', this.rightHandleTouchEnd);
+      window.addEventListener('touchcancel', this.rightHandleTouchEnd);
+    }
+
+    for (let touch of e.changedTouches) {
+      this.touchDownX = touch.clientX;
+      const id = touch.identifier;
+      this.pointerIds.push(id);
+      this.activePointers.set(id, touch);
+    }
+  };
+
+  rightHandleTouchMove(e) {
+    e.preventDefault();
+
+    for (let touch of e.changedTouches) {
+      const id = touch.identifier;
+      if (this.pointerIds.indexOf(id) !== -1) {
+        const touchMoveX = touch.clientX - this.touchDownX;
+        this.selectionEndPos = this.selectionOffsetEnd + touchMoveX;
+        this.selectionEndPos = Math.max(this.selectionStartPos, Math.min(this.selectionEndPos, this.width));
+        this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
+        this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
+        this.selectionSvg.setAttribute('width', `${this.selectionWidth}`);
+        this.rightHandle.setAttribute('x1', this.selectionEndPos);
+        this.rightHandle.setAttribute('x2', this.selectionEndPos);
+
+
+        if (this.cbSelectionChange) {
+          const selectionStartTime = this.duration * this.selectionStartPos / this.width + this.startTime;
+          const selectionEndTime = this.duration * this.selectionEndPos / this.width + this.startTime;
+          this.cbSelectionChange(selectionStartTime, selectionEndTime);
+        }
+      }
+    }
+  }
+
+  rightHandleTouchEnd(e) {
+    for (let touch of e.changedTouches) {
+      const pointerId = touch.identifier;
+      const index = this.pointerIds.indexOf(pointerId);
+      if (index !== -1) {
+        this.pointerIds.splice(index, 1);
+        this.activePointers.delete(pointerId);
+      }
+    }
+
+    if (this.pointerIds.length === 0) {
+      this.selectionOffsetStart = this.selectionStartPos;
+      this.selectionOffsetEnd = this.selectionEndPos;
+
+      window.removeEventListener('touchmove', this.rightHandleTouchMove);
+      window.removeEventListener('touchend', this.rightHandleTouchEnd);
+      window.removeEventListener('touchcancel', this.rightHandleTouchEnd);
     }
   }
 

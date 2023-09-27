@@ -195,6 +195,7 @@ class RecorderExperience extends AbstractExperience {
                 bottom: 2px;
                 left: 0px;
                 height: ${this.buttonHeight}px;
+                width: ${this.buttonHeight}px;
               "
               @change="${e => e.detail.value ? this.mediaRecorder.start() : this.mediaRecorder.stop()}"
             ></sc-record>

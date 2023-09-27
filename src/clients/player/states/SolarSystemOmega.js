@@ -221,6 +221,7 @@ export default class SolarSystemOmega extends State {
               bottom: 4px; 
               left: 2px;
               height: 40px;
+              width: 40px;
             "
             @change="${e => {
               e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop();
@@ -302,7 +303,7 @@ export default class SolarSystemOmega extends State {
                     <p>${state.get('sourceFilename')}</p>
                   </div>
                   <sc-transport
-                    style="width: 50px;"
+                    style="height: 50px;"
                     .buttons=${["play", "stop"]}
                     @change="${e => state.set({ mosaicingActive: e.detail.value === 'play'})}"
                     }}"

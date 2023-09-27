@@ -366,7 +366,7 @@ export default class SolarSystemOmegaSolo extends State {
                 ">
                   <sc-transport
                     id="transport-mosaicing-${name}"
-                    style="width: 50px;"
+                    style="height: 50px;"
                     .buttons=${["play", "stop"]}
                     state="${state.get('mosaicingActive') ? 'play' : 'stop'}"
                     @change="${e => state.set({ mosaicingActive: e.detail.value === 'play' })}"
@@ -559,7 +559,9 @@ export default class SolarSystemOmegaSolo extends State {
             align-items: ${window.innerWidth < 1000 ? 'flex-start' : 'flex-end'}
           ">
             <sc-transport
-              style="height: 50px;"
+              style="
+                height: 50px;
+              "
               .buttons=${["play", "stop"]}
               @change="${e => this.setGroupParam('mosaicingActive', e.detail.value === 'play')}"
             ></sc-transport>

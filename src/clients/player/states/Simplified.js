@@ -256,6 +256,7 @@ export default class Simplified extends State {
               style="
                 float: left;
                 height: 50px;
+                width: 50px;
               "
               @change="${e => e.detail.value ? this.context.mediaRecorder.start() : this.context.mediaRecorder.stop()}"
             ></sc-record>
@@ -305,7 +306,7 @@ export default class Simplified extends State {
                 style="
                   float: left;
                   margin-right: 10px;
-                  width: 50px;
+                  height: 50px;
                 "
                 id="transport-mosaicing"
                 .buttons=${["play", "stop"]}
