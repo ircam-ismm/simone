@@ -5,8 +5,6 @@ import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
 
-import pkg from 'node-web-audio-api';
-const { load } = pkg;
 
 export default class Loader {
   constructor(audioContext) {
@@ -30,11 +28,11 @@ export default class Loader {
               file.close();
 
               // console.log(fs.readFileSync(tempfile));
-              const fileRs = load(tempfile);
-              const buffer = await this.audioContext.decodeAudioData(fileRs);
+              const arrayBuffer = fs.readFileSync(tempfile).buffer;
+              const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
               // console.log(buffer);
 
-              resolve(buffer);
+              resolve(audioBuffer);
               resolveTask(); // clean tmp file
             });
           });

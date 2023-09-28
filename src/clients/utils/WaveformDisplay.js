@@ -37,6 +37,15 @@ export default class WaveformDisplay {
     const straightLinePath = `M 0,${this.height / 2}L ${this.width},${this.height / 2}`;
     this.waveformSvg.setAttributeNS(null, 'd', straightLinePath);
 
+    if (this.hasCursor) {
+      this.cursorSvg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      this.cursorSvg.setAttribute('fill', 'none');
+      this.cursorSvg.setAttribute('shape-rendering', 'crispEdges');
+      this.cursorSvg.setAttribute('stroke', 'red');
+      this.cursorSvg.style.opacity = 1;
+      this.container.appendChild(this.cursorSvg);
+    }
+
     if (this.hasSelection) {
       this.selectionStartTime = 0;
       this.selectionStartPos = 0;
@@ -56,6 +65,10 @@ export default class WaveformDisplay {
 
       this.container.appendChild(this.selectionSvg);
     }
+
+
+    
+
 
     if (this.freeSelection) {
       this.leftHandle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -92,15 +105,6 @@ export default class WaveformDisplay {
       this.container.appendChild(this.rightHandle);
     }
 
-    if (this.hasCursor) {
-      this.cursorSvg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      this.cursorSvg.setAttribute('fill', 'none');
-      this.cursorSvg.setAttribute('shape-rendering', 'crispEdges');
-      this.cursorSvg.setAttribute('stroke', 'red');
-      this.cursorSvg.style.opacity = 1;
-      this.container.appendChild(this.cursorSvg);
-    }
-    
 
     this.mouseDown = this.mouseDown.bind(this);
     this.mouseMove = this.mouseMove.bind(this);
