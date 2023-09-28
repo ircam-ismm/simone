@@ -4,7 +4,6 @@ import { render, html } from 'lit/html.js';
   A web component for displaying a waveform, a cursor and a selection over the waveform
 */
 export default class WaveformDisplay {
-
   /**
    * Creates the component
    * @param {number} height - The height (in px) of the component
@@ -66,12 +65,12 @@ export default class WaveformDisplay {
       this.leftHandle.setAttribute('y2', `${this.height}`);
       this.leftHandle.style.stroke = "goldenrod";
       this.leftHandle.style.strokeWidth = `${0}px`;
-      this.leftHandle.style.cursor = "grab";
+      this.leftHandle.style.cursor = "ew-resize";
       this.leftHandle.addEventListener('mouseover', () => {
-        this.leftHandle.style.strokeWidth = "6px";
+        this.leftHandle.style.strokeWidth = "4px";
       });
       this.leftHandle.addEventListener('mouseout', () => {
-        this.leftHandle.style.strokeWidth = "4px";
+        this.leftHandle.style.strokeWidth = "2px";
       });
 
       this.rightHandle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -81,12 +80,12 @@ export default class WaveformDisplay {
       this.rightHandle.setAttribute('y2', `${this.height}`);
       this.rightHandle.style.stroke = "goldenrod";
       this.rightHandle.style.strokeWidth = `${0}px`;
-      this.rightHandle.style.cursor = "grab";
+      this.rightHandle.style.cursor = "ew-resize";
       this.rightHandle.addEventListener('mouseover', () => {
-        this.rightHandle.style.strokeWidth = "6px";
+        this.rightHandle.style.strokeWidth = "4px";
       });
       this.rightHandle.addEventListener('mouseout', () => {
-        this.rightHandle.style.strokeWidth = "4px";
+        this.rightHandle.style.strokeWidth = "2px";
       });
 
       this.container.appendChild(this.leftHandle);
@@ -363,10 +362,10 @@ export default class WaveformDisplay {
       this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
       this.leftHandle.setAttribute('x1', this.selectionStartPos);
       this.leftHandle.setAttribute('x2', this.selectionStartPos);
-      this.leftHandle.style.strokeWidth = `${4}px`;
+      this.leftHandle.style.strokeWidth = `${2}px`;
       this.rightHandle.setAttribute('x1', this.selectionEndPos);
       this.rightHandle.setAttribute('x2', this.selectionEndPos);
-      this.rightHandle.style.strokeWidth = `${4}px`;
+      this.rightHandle.style.strokeWidth = `${2}px`;
     } else if (this.clickedSelection) {
       const mouseMov = e.clientX - this.mouseDownX;
       this.selectionStartPos = this.selectionOffsetStart + mouseMov;
@@ -533,10 +532,10 @@ export default class WaveformDisplay {
           this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
           this.leftHandle.setAttribute('x1', this.selectionStartPos);
           this.leftHandle.setAttribute('x2', this.selectionStartPos);
-          this.leftHandle.style.strokeWidth = `${4}px`;
+          this.leftHandle.style.strokeWidth = `${2}px`;
           this.rightHandle.setAttribute('x1', this.selectionEndPos);
           this.rightHandle.setAttribute('x2', this.selectionEndPos);
-          this.rightHandle.style.strokeWidth = `${4}px`;
+          this.rightHandle.style.strokeWidth = `${2}px`;
         } else if (this.touchedSelection) {
           const touchMov = touch.clientX - this.touchDownX;
           this.selectionStartPos = this.selectionOffsetStart + touchMov;
