@@ -18,6 +18,6 @@
     },
   },
 
-  system: 'simplified',
+  system: 'solar-system',
   nPlayers: 100,
 }
