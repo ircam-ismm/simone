@@ -8,21 +8,20 @@ export default class CloneWaiting extends State {
     this.targetPlayerState = this.context.participant;
   }
 
+  
+
   async enter() {
     const nPlayersReady = this.context.global.get('clonePlayersReady');
     const nPlayers = this.context.global.get('nPlayers'); 
-    
-    if (nPlayersReady === nPlayers) {
-      setTimeout(() => {
-        this.context.participant.set({
-          state: 'clone-playing',
-        });
-      }, 5000);  //waiting for all files to be loaded
-    }
 
     this.context.global.subscribe(async updates => {
       if ('clonePlayersReady' in updates) {
         if (updates.clonePlayersReady === nPlayers) {
+          await this.context.loadSoundbank();
+          // this.context.participant.set({
+          //   state: 'clone-playing',
+          // });
+          
           setTimeout(() => {
             this.context.participant.set({
               state: 'clone-playing',
@@ -30,7 +29,7 @@ export default class CloneWaiting extends State {
           }, 5000);   //waiting for all files to be loaded
         }
       }
-    });
+    }, true);
   }
 
 

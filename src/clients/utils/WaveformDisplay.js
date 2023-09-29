@@ -364,22 +364,26 @@ export default class WaveformDisplay {
       this.selectionWidth = this.selectionEndPos - this.selectionStartPos;
       this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
       this.selectionSvg.setAttribute('width', `${this.selectionEndPos - this.selectionStartPos}`);
-      this.leftHandle.setAttribute('x1', this.selectionStartPos);
-      this.leftHandle.setAttribute('x2', this.selectionStartPos);
-      this.leftHandle.style.strokeWidth = `${2}px`;
-      this.rightHandle.setAttribute('x1', this.selectionEndPos);
-      this.rightHandle.setAttribute('x2', this.selectionEndPos);
-      this.rightHandle.style.strokeWidth = `${2}px`;
+      if (this.freeSelection) {
+        this.leftHandle.setAttribute('x1', this.selectionStartPos);
+        this.leftHandle.setAttribute('x2', this.selectionStartPos);
+        this.leftHandle.style.strokeWidth = `${2}px`;
+        this.rightHandle.setAttribute('x1', this.selectionEndPos);
+        this.rightHandle.setAttribute('x2', this.selectionEndPos);
+        this.rightHandle.style.strokeWidth = `${2}px`;
+      }
     } else if (this.clickedSelection) {
       const mouseMov = e.clientX - this.mouseDownX;
       this.selectionStartPos = this.selectionOffsetStart + mouseMov;
       this.selectionStartPos = Math.min(Math.max(0, this.selectionStartPos), this.width - this.selectionWidth);
       this.selectionEndPos = this.selectionStartPos + this.selectionWidth;
       this.selectionSvg.setAttribute('x', `${this.selectionStartPos}`);
-      this.leftHandle.setAttribute('x1', this.selectionStartPos);
-      this.leftHandle.setAttribute('x2', this.selectionStartPos);
-      this.rightHandle.setAttribute('x1', this.selectionEndPos);
-      this.rightHandle.setAttribute('x2', this.selectionEndPos);
+      if (this.freeSelection) {
+        this.leftHandle.setAttribute('x1', this.selectionStartPos);
+        this.leftHandle.setAttribute('x2', this.selectionStartPos);
+        this.rightHandle.setAttribute('x1', this.selectionEndPos);
+        this.rightHandle.setAttribute('x2', this.selectionEndPos);
+      }
     }
 
     if (this.cbSelectionChange) {

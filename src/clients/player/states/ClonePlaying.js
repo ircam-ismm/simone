@@ -162,6 +162,8 @@ export default class ClonePlaying extends State {
     const nPlayers = this.context.global.get('nPlayers');
     const idSourceToGet = (this.context.checkinId + 1)%nPlayers;
     const sourceBuffer = this.context.audioBufferLoader.data[`recording-player-${idSourceToGet}.wav`];
+    console.log('fetching file', `recording-player-${idSourceToGet}.wav`)
+    console.log(sourceBuffer);
     this.currentSource = sourceBuffer;
     if (sourceBuffer) {
       this.worker.postMessage({
@@ -419,7 +421,6 @@ export default class ClonePlaying extends State {
                 bottom: 2px;
                 left: 2px;
                 height: 40px;
-                width: 40px;
               "
               .buttons=${["play", "stop"]}
               @change="${e => this.transportSourceFile(e.detail.value)}"
@@ -449,7 +450,6 @@ export default class ClonePlaying extends State {
                 bottom: 4px;
                 left: 2px;
                 height: 60px;
-                width: 60px;
               "
               id="transport-mosaicing"
               .buttons=${["play", "stop"]}

@@ -228,7 +228,7 @@ export default class SolarSystemSatellite extends State {
         this.context.participant.set({ detune: value });
         break;
       case 'grainPeriod':
-        this.analyzerEngine.setPeriod(value);
+        // this.analyzerEngine.setPeriod(value);
         this.synthEngine.setGrainPeriod(value);
         this.context.participant.set({ grainPeriod: value });
         break;
