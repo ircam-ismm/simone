@@ -579,6 +579,7 @@ export default class SolarSystemOmegaSolo extends State {
                     style="width: ${groupSliderWidth}px;"
                     min="${schema[param].min}"
                     max="${schema[param].max}"
+                    value="${schema[param].default}"
                     number-box
                     @input="${e => this.setGroupParam(param, e.detail.value)}"
                   ></sc-slider>
