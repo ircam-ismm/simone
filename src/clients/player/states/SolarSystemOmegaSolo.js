@@ -476,7 +476,11 @@ export default class SolarSystemOmegaSolo extends State {
         <h1> ${this.context.participant.get('name')} [id: ${this.context.checkinId}] </h1>
       </div>
 
-      <sc-midi></sc-midi>
+      <sc-midi style="
+        position: absolute;
+        top: 20px;
+        right: 50px;
+      "></sc-midi>
 
       <!-- Recorder -->
       <div style="

@@ -168,8 +168,6 @@ export default class Solo extends State {
       density: this.context.participant.get('density'),
     };
     this.previousValues = {...this.currentValues};
-
-  
   } 
 
   setSourceFile(sourceBuffer) {

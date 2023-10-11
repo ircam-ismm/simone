@@ -58,7 +58,8 @@ export default class CloneRecording extends State {
     if (this.currentRecordingDecoded) {
       // crop 
       const sampleRate = this.context.audioContext.sampleRate;
-      const nChannels = this.currentRecordingDecoded.numberOfChannels
+      // const nChannels = this.currentRecordingDecoded.numberOfChannels
+      const nChannels = 1; //small fix for experiment purpose
       
       const startIdx = this.cropStart*sampleRate;
       const endIdx = this.cropEnd*sampleRate;
