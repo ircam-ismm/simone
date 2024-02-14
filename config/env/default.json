@@ -24,8 +24,8 @@
   //   cert: 'config/env/certs/fullchain.pem',
   // },
   httpsInfos: {
-    key: 'config/env/certs/privkey.pem',
-    cert: 'config/env/certs/fullchain.pem',
+    key: null,
+    cert: null,
   },
 
   // @important: for node clients only, Ip of the server

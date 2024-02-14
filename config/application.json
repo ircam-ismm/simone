@@ -19,5 +19,5 @@
   },
 
   system: 'solar-system',
-  nPlayers: 100,
+  nPlayers: 1000,
 }

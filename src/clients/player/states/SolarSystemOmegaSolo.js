@@ -264,7 +264,7 @@ export default class SolarSystemOmegaSolo extends State {
           margin-top: 20px;
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(0px, ${nPlayers * 50 + 50}px));
-          grid-gap: 38px;
+          grid-gap: 20px;
           justify-content: space-between;
         "
       >
@@ -326,7 +326,7 @@ export default class SolarSystemOmegaSolo extends State {
         margin-top: 20px;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(370px, 370px));
-        grid-gap: 38px;
+        grid-gap: 20px;
       "
       >
         ${Object.entries(this.players).map(([name, state]) => {

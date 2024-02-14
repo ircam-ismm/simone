@@ -132,6 +132,7 @@ class ThingExperience extends AbstractExperience {
             i++;
           }
         }
+        console.log(fileUrl)
         // this.setSourceFile(this.context.audioBufferLoader.data[updates.sourceFilename]);
         const buffer = await this.bufferLoader.load(fileUrl);
         console.log('buffer loaded');
