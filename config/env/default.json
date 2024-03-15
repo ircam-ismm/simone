@@ -29,8 +29,8 @@
   },
 
   // @important: for node clients only, Ip of the server
-  serverIp: '10.10.0.1',
-  // serverIp: '127.0.0.1',
+  //serverIp: '10.10.0.1',
+   serverIp: '127.0.0.1',
 
   // protect pages with a password
   // auth: {
